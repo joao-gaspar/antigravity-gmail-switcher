@@ -47,7 +47,10 @@
                 <!-- Ultra-compact top bar -->
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
                     <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-primary); letter-spacing: 0.5px;">📬 Gmail Switcher</span>
-                    <div style="display: flex; gap: 4px;">
+                    <div style="display: flex; gap: 4px; align-items: center;">
+                        <button class="btn-ctrl" onclick="openSetupModal()" title="Assistente do AGS / Instalar neste PC" style="padding:0 8px; width:auto; height:26px; font-size:0.62rem; background:linear-gradient(135deg, rgba(0,242,254,0.15) 0%, rgba(79,172,254,0.15) 100%); border:1px solid rgba(0,210,255,0.4); border-radius:6px; color:#00f2fe; display:flex; align-items:center; gap:4px; font-weight:700; cursor:pointer;">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Assistente AGS
+                        </button>
                         <button class="btn-ctrl" id="btn-next-account" title="Próxima Conta Disponível" style="width: 26px; height: 26px; font-size: 0.75rem; background: rgba(0,210,255,0.12); border: 1px solid rgba(0,210,255,0.3); border-radius: 6px; color: #00d2ff; display:flex; align-items:center; justify-content:center;">
                             <i class="fa-solid fa-angles-right"></i>
                         </button>
