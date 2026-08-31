@@ -11,7 +11,21 @@ echo   Configurando o monitoramento do Antigravity nesta maquina...
 echo   Por favor, aguarde alguns segundos.
 echo.
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://antigravity-gmail-switcher.vercel.app/setup.ps1 | iex"
+set SETUP_FILE=%TEMP%\ags_setup.ps1
+
+if exist "%SETUP_FILE%" del /f /q "%SETUP_FILE%" >nul 2>&1
+curl -s -L -o "%SETUP_FILE%" https://antigravity-gmail-switcher.vercel.app/setup.ps1
+
+if exist "%SETUP_FILE%" (
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%SETUP_FILE%"
+    del /f /q "%SETUP_FILE%" >nul 2>&1
+) else (
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; (New-Object System.Net.WebClient).DownloadFile('https://antigravity-gmail-switcher.vercel.app/setup.ps1', '%SETUP_FILE%')"
+    if exist "%SETUP_FILE%" (
+        powershell -NoProfile -ExecutionPolicy Bypass -File "%SETUP_FILE%"
+        del /f /q "%SETUP_FILE%" >nul 2>&1
+    )
+)
 
 echo.
 echo  ========================================================
