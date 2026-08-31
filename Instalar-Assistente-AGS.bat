@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-set AGS_VER=v2.4.5
+set AGS_VER=v2.4.6
 title Assistente do AGS %AGS_VER% - Instalador Automatico
 color 0A
 cls
@@ -14,7 +14,7 @@ echo   Configurando o monitoramento do Antigravity nesta maquina...
 echo   Por favor, aguarde alguns segundos.
 echo.
 
-set SETUP_FILE=%TEMP%\ags_setup.ps1
+set SETUP_FILE=%TEMP%\ags_setup_%RANDOM%.ps1
 
 if exist "%SETUP_FILE%" del /f /q "%SETUP_FILE%" >nul 2>&1
 
@@ -36,8 +36,9 @@ if not exist "%SETUP_FILE%" (
     exit /b 1
 )
 
-echo   [2/3] Desbloqueando e executando no PowerShell...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Unblock-File -Path '%SETUP_FILE%' -ErrorAction SilentlyContinue; Get-Content '%SETUP_FILE%' | Out-String | Invoke-Expression"
+echo   [2/3] Executando no PowerShell...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Unblock-File '%SETUP_FILE%' -ErrorAction SilentlyContinue" >nul 2>&1
+powershell -NoProfile -ExecutionPolicy Bypass -File "%SETUP_FILE%"
 
 if exist "%SETUP_FILE%" del /f /q "%SETUP_FILE%" >nul 2>&1
 

@@ -3,7 +3,7 @@ $ErrorActionPreference = "Stop"
 $OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-$AGS_VERSION = "2.4.5"
+$AGS_VERSION = "2.4.6"
 Write-Host "`n========================================================" -ForegroundColor Cyan
 Write-Host " [AGS] INICIANDO AUTO-SETUP DO AGS v$AGS_VERSION" -ForegroundColor Cyan
 Write-Host "========================================================`n" -ForegroundColor Cyan
