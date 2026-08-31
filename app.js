@@ -520,8 +520,6 @@ function renderAccounts() {
     // Selected machine active email for UI badges
     let selectedActiveEmail = null;
     let selectedSnap = null;
-    const isLocalMachineSelected = !state.selectedMachineId || 
-        (state.currentMachine && state.selectedMachineId === state.currentMachine.machine_id);
 
     if (isLocalMachineSelected) {
         selectedActiveEmail = state.accounts.find(a => a.id === state.activeAccountId)?.email;
