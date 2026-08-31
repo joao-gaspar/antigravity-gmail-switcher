@@ -439,7 +439,15 @@ function sortAccountsSmart(accountsList) {
 function formatResetRemaining(resetAtStr) {
     if (!resetAtStr) return null;
     try {
-        const target = new Date(resetAtStr);
+        let formattedStr = resetAtStr.trim();
+        // Replace space with T for ISO compliance
+        if (!formattedStr.includes('T') && formattedStr.includes(' ')) {
+            formattedStr = formattedStr.replace(' ', 'T');
+        }
+        // If it doesn't specify fuso, treat as local/UTC fallback safely
+        const target = new Date(formattedStr);
+        if (isNaN(target.getTime())) return null;
+
         const diffMs = target.getTime() - Date.now();
         if (diffMs <= 0) return "Renovando...";
         const diffSecs = Math.floor(diffMs / 1000);

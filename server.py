@@ -131,6 +131,114 @@ def auto_register_account_if_new(email, name):
     except Exception as e:
         print(f"[auto-register] Error: {e}")
 
+def update_account_status_if_exhausted(email, model_quotas):
+    """
+    Checks if active account model quotas are exhausted (<= 1%) and updates accounts.json status.
+    If exhausted, marks status = 'rate_limited' with reset_at timestamp.
+    If recovered, resets status = 'active'.
+    """
+    if not email or not os.path.exists(ACCOUNTS_FILE):
+        return
+    try:
+        is_exhausted = False
+        reset_time_str = None
+        
+        for lbl, info in model_quotas.items():
+            if 'gemini' in lbl.lower() or 'claude' in lbl.lower() or 'gpt' in lbl.lower():
+                rem = info.get('remaining', 1.0)
+                if rem <= 0.01:
+                    is_exhausted = True
+                    r_time = info.get('resetTime')
+                    if r_time:
+                        # Convert "2026-09-07T04:37:19Z" -> "2026-09-07 04:37:19"
+                        reset_time_str = r_time.replace('T', ' ').replace('Z', '').strip()
+                        break
+        
+        with open(ACCOUNTS_FILE, 'r', encoding='utf-8-sig') as f:
+            data = json.load(f)
+            
+        accounts = data.get('accounts', [])
+        updated = False
+        
+        for acc in accounts:
+            if acc.get('email', '').lower() == email.lower():
+                current_status = acc.get('status')
+                if is_exhausted:
+                    # Mark as rate_limited
+                    target_reset = reset_time_str or (datetime.datetime.now() + datetime.timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
+                    if current_status != 'rate_limited' or acc.get('reset_at') != target_reset:
+                        acc['status'] = 'rate_limited'
+                        acc['rate_limited_at'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        acc['reset_at'] = target_reset
+                        updated = True
+                        print(f"[status-update] Marked {email} as rate_limited. Resets at {acc['reset_at']}")
+                else:
+                    # Recover to active
+                    if current_status == 'rate_limited':
+                        acc['status'] = 'active'
+                        acc['rate_limited_at'] = None
+                        acc['reset_at'] = None
+                        updated = True
+                        print(f"[status-update] Restored {email} to active status.")
+                        
+        if updated:
+            with open(ACCOUNTS_FILE, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=4, ensure_ascii=False)
+    except Exception as e:
+        print(f"[status-update] Error: {e}")
+
+def sync_accounts_json_with_sqlite():
+    """
+    Retroactively sync accounts.json status with the latest SQLite snapshots.
+    If the latest snapshot for an account shows it is exhausted (<= 1.0%), marks it rate_limited.
+    """
+    if not os.path.exists(ACCOUNTS_FILE):
+        return
+    try:
+        snapshots = database.get_all_latest_snapshots()
+        if not snapshots:
+            return
+            
+        with open(ACCOUNTS_FILE, 'r', encoding='utf-8-sig') as f:
+            data = json.load(f)
+        
+        accounts = data.get('accounts', [])
+        updated = False
+        
+        for acc in accounts:
+            email = acc.get('email', '').lower()
+            snap = next((s for s in snapshots if s['email'].lower() == email), None)
+            if snap:
+                g_exh = (snap.get('gemini_pct', 100.0) <= 1.0)
+                c_exh = (snap.get('claude_pct', 100.0) <= 1.0)
+                is_exhausted = g_exh or c_exh  # rate limit if either main model is out
+                current_status = acc.get('status')
+                
+                if is_exhausted:
+                    if current_status != 'rate_limited':
+                        acc['status'] = 'rate_limited'
+                        acc['rate_limited_at'] = snap.get('ts', '').replace('T', ' ')
+                        r_at = snap.get('reset_at') or ''
+                        acc['reset_at'] = r_at.replace('T', ' ').replace('Z', '').strip()
+                        if not acc['reset_at']:
+                            acc['reset_at'] = (datetime.datetime.now() + datetime.timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
+                        updated = True
+                        print(f"[sync-db] Marked {email} as rate_limited based on SQLite snapshot.")
+                else:
+                    if current_status == 'rate_limited':
+                        acc['status'] = 'active'
+                        acc['rate_limited_at'] = None
+                        acc['reset_at'] = None
+                        updated = True
+                        print(f"[sync-db] Restored {email} to active based on SQLite snapshot.")
+                        
+        if updated:
+            with open(ACCOUNTS_FILE, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=4, ensure_ascii=False)
+    except Exception as e:
+        print(f"[sync-db] Error syncing: {e}")
+
+
 class CustomHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=DIRECTORY, **kwargs)
@@ -247,6 +355,10 @@ def build_result(user_status, port, pid, now_iso):
         p_pct = max(gpt_vals)    * 100 if gpt_vals    else 0.0
         database.save_snapshot(mid, email, g_pct, c_pct, p_pct, first_reset)
         database.upsert_account(mid, email, is_active=True)
+        
+        # Check and update accounts.json rate-limited status dynamically
+        update_account_status_if_exhausted(email, result["modelQuotas"])
+        
         try:
             with open(WATCH_FILE, 'w', encoding='utf-8') as f:
                 json.dump({"last_check": now_iso, "agent_email": email,
@@ -265,6 +377,9 @@ def build_result(user_status, port, pid, now_iso):
                 result["modelQuotas"] = ws.get("model_quotas", {})
         except Exception:
             pass
+    # Sincronizar status do JSON com banco SQLite antes de carregar o pool
+    sync_accounts_json_with_sqlite()
+
     # Pool from accounts.json
     pool = []
     try:
