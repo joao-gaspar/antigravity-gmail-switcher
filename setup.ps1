@@ -3,7 +3,7 @@ $ErrorActionPreference = "Stop"
 $OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-$AGS_VERSION = "2.4.2"
+$AGS_VERSION = "2.4.3"
 Write-Host "`n========================================================" -ForegroundColor Cyan
 Write-Host " [AGS] INICIANDO AUTO-SETUP DO AGS v$AGS_VERSION" -ForegroundColor Cyan
 Write-Host "========================================================`n" -ForegroundColor Cyan
@@ -37,29 +37,47 @@ if (-not (Test-Path "$skillDir\accounts.json")) {
     }
 }
 
-Write-Host "`n⚙️ Configurando Agendador de Tarefas do Windows..." -ForegroundColor Cyan
+Write-Host "`n[INFO] Configurando inicializacao automatica..." -ForegroundColor Cyan
 $taskName = "AntigravityServerWatchdog"
 $vbsPath = "$destDir\start-server.vbs"
 
-# Kill existing python server / wscript if running
+# Stop existing processes
 Get-Process python*, wscript -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 Start-Sleep -Milliseconds 500
 
-$action = New-ScheduledTaskAction -Execute "wscript.exe" -Argument "`"$vbsPath`""
-$trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
-$settings = New-ScheduledTaskSettingsSet `
-    -AllowStartIfOnBatteries `
-    -DontStopIfGoingOnBatteries `
-    -ExecutionTimeLimit (New-TimeSpan -Hours 0) `
-    -StartWhenAvailable `
-    -RunOnlyIfNetworkAvailable:$false
-$principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive
+# 1. Try Windows Scheduled Task (catch permission denied for non-admin users)
+$scheduledTaskOk = $false
+try {
+    $action = New-ScheduledTaskAction -Execute "wscript.exe" -Argument "`"$vbsPath`""
+    $trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
+    $settings = New-ScheduledTaskSettingsSet `
+        -AllowStartIfOnBatteries `
+        -DontStopIfGoingOnBatteries `
+        -ExecutionTimeLimit (New-TimeSpan -Hours 0) `
+        -StartWhenAvailable `
+        -RunOnlyIfNetworkAvailable:$false
+    $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive
+    Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null
+    $scheduledTaskOk = $true
+} catch {
+    Write-Host "  [INFO] Usando pasta de Inicializacao do Windows (sem necessidade de Admin)..." -ForegroundColor Yellow
+}
 
-Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null
+# 2. Always add fallback to Windows Startup Folder (shell:startup)
+try {
+    $startupFolder = [Environment]::GetFolderPath("Startup")
+    if ($startupFolder -and (Test-Path $startupFolder)) {
+        Copy-Item -Path "$vbsPath" -Destination "$startupFolder\start-server.vbs" -Force -ErrorAction SilentlyContinue
+    }
+} catch {}
 
-Write-Host "`n▶️ Iniciando serviço de monitoramento..." -ForegroundColor Cyan
-Start-ScheduledTask -TaskName $taskName
-Start-Sleep -Seconds 4
+# 3. Directly launch server right now
+Write-Host "`n[INFO] Iniciando servico de monitoramento..." -ForegroundColor Cyan
+if ($scheduledTaskOk) {
+    try { Start-ScheduledTask -TaskName $taskName } catch {}
+}
+Start-Process -FilePath "wscript.exe" -ArgumentList "`"$vbsPath`"" -WindowStyle Hidden
+Start-Sleep -Seconds 3
 
 try {
     $res = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/status" -TimeoutSec 3

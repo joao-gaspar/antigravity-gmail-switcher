@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-set AGS_VER=v2.4.2
+set AGS_VER=v2.4.3
 title Assistente do AGS %AGS_VER% - Instalador Automatico
 color 0A
 cls
