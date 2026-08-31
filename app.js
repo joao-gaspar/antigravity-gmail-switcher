@@ -808,9 +808,10 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
     if (!banner) {
         banner = document.createElement('div');
         banner.id = 'live-banner';
-        banner.style.cssText = 'position:relative; z-index:10; margin:0 0 8px 0; padding:8px 12px; font-size:0.65rem; border-radius:10px; border: 1px solid rgba(255,255,255,0.07); transition: background 0.3s;';
-        const grid = document.getElementById('accounts-grid');
-        if (grid && grid.parentNode) grid.parentNode.insertBefore(banner, grid);
+        banner.style.cssText = 'position:relative; z-index:10; padding:7px 12px; font-size:0.65rem; border-radius:8px; border: 1px solid rgba(255,255,255,0.07); transition: background 0.3s;';
+        // Insert inside the sticky header slot — never inside the scrolling section
+        const slot = document.getElementById('live-banner-slot');
+        if (slot) slot.appendChild(banner);
     }
     
     if (isOffline) {
