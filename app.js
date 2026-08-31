@@ -1066,7 +1066,9 @@ function closeNotesDrawer() {
 const AUTH_CRED_KEY = 'antigravity_creds_v1';
 
 function doLogin(email, pass) {
-    return email === 'joaogaspar@gmail.com' && pass === '2025@Switcher';
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanPass  = (pass || '').trim();
+    return cleanEmail === 'joaogaspar@gmail.com' && cleanPass === '2025@Switcher';
 }
 
 function applyLogin(overlay) {
@@ -1078,7 +1080,20 @@ function applyLogin(overlay) {
 function checkAuth() {
     const overlay = document.getElementById('login-overlay');
 
-    // 1. Try auto-login from saved credentials
+    // 0. Local machine access (localhost / 127.0.0.1) NEVER requires login!
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (isLocal) {
+        localStorage.setItem('antigravity_authenticated', 'true');
+        if (overlay) overlay.style.display = 'none';
+        return;
+    }
+
+    // 1. Try auto-login from saved credentials or authenticated flag
+    if (localStorage.getItem('antigravity_authenticated') === 'true') {
+        if (overlay) overlay.style.display = 'none';
+        return;
+    }
+
     try {
         const saved = localStorage.getItem(AUTH_CRED_KEY);
         if (saved) {
@@ -1086,44 +1101,31 @@ function checkAuth() {
             if (doLogin(e, p)) {
                 localStorage.setItem('antigravity_authenticated', 'true');
                 if (overlay) overlay.style.display = 'none';
-                return; // already logged in, no screen shown
+                return;
             }
         }
     } catch (_) {}
 
-    // 2. Already authenticated flag
-    if (localStorage.getItem('antigravity_authenticated') === 'true') {
-        if (overlay) overlay.style.display = 'none';
-        return;
-    }
-
-    // 3. Show login form
+    // 2. Show login form on remote (Vercel) access if not authenticated
     if (overlay) overlay.style.display = 'flex';
 
-    // Pre-fill form if partial creds exist
-    try {
-        const saved = localStorage.getItem(AUTH_CRED_KEY);
-        if (saved) {
-            const { e, p } = JSON.parse(saved);
-            const emailEl = document.getElementById('login-email');
-            const passEl  = document.getElementById('login-password');
-            if (emailEl && e) emailEl.value = e;
-            if (passEl  && p) passEl.value  = p;
-        }
-    } catch (_) {}
+    // Pre-fill inputs with default credentials if empty
+    const emailEl = document.getElementById('login-email');
+    const passEl  = document.getElementById('login-password');
+    if (emailEl && !emailEl.value) emailEl.value = 'joaogaspar@gmail.com';
+    if (passEl  && !passEl.value) passEl.value  = '2025@Switcher';
 
     const form = document.getElementById('login-form');
     if (form && !form._authBound) {
         form._authBound = true;
         form.addEventListener('submit', (e) => {
             e.preventDefault();
-            const email  = document.getElementById('login-email').value.trim();
+            const email  = document.getElementById('login-email').value;
             const pass   = document.getElementById('login-password').value;
             const errDiv = document.getElementById('login-error');
 
             if (doLogin(email, pass)) {
-                // Persist credentials so future visits auto-login
-                localStorage.setItem(AUTH_CRED_KEY, JSON.stringify({ e: email, p: pass }));
+                localStorage.setItem(AUTH_CRED_KEY, JSON.stringify({ e: email.trim(), p: pass.trim() }));
                 applyLogin(overlay);
                 if (errDiv) errDiv.style.display = 'none';
             } else {
