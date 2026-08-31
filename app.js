@@ -381,22 +381,22 @@ function getChooserUrl(email, service) {
 // Rank 3: Partially consumed available accounts (lowest usage first)
 // Rank 4: Blocked / Rate-limited accounts ordered by reset_at ascending (renewing soonest first!)
 function sortAccountsSmart(accountsList) {
-    // Determine active email and suggestion for selected machine
     let activeEmailForSel = null;
     let suggestEmailForSel = null;
 
-    if (state.machines && state.selectedMachineId) {
-        // If we have snapshots, find the active account and suggested candidate for selected machine
-        const selMachine = state.machines.find(m => m.machine_id === state.selectedMachineId);
-        if (state.snapshots) {
+    const isLocalMachineSelected = !state.selectedMachineId || 
+        (state.currentMachine && state.selectedMachineId === state.currentMachine.machine_id);
+
+    if (isLocalMachineSelected) {
+        // Direct live API data for local computer (updated every 5s)
+        activeEmailForSel = state.accounts.find(a => a.id === state.activeAccountId)?.email;
+        suggestEmailForSel = state.liveSuggestEmail;
+    } else {
+        // Read from DB snapshot for other computers
+        if (state.snapshots && state.selectedMachineId) {
             const snap = state.snapshots.find(s => s.machine_id === state.selectedMachineId);
             if (snap) activeEmailForSel = snap.email;
         }
-    }
-    // Fallback to local live variables if looking at the local machine
-    if (state.selectedMachineId === (state.currentMachine && state.currentMachine.machine_id)) {
-        activeEmailForSel = activeEmailForSel || (state.activeAccountId ? state.accounts.find(a => a.id === state.activeAccountId)?.email : null);
-        suggestEmailForSel = state.liveSuggestEmail;
     }
 
     return [...accountsList].sort((a, b) => {
@@ -476,15 +476,18 @@ function renderAccounts() {
     // Selected machine active email for UI badges
     let selectedActiveEmail = null;
     let selectedSnap = null;
-    if (state.snapshots && state.selectedMachineId) {
-        selectedSnap = state.snapshots.find(s => s.machine_id === state.selectedMachineId);
-        if (selectedSnap) {
-            selectedActiveEmail = selectedSnap.email;
-        }
-    }
-    // Local fallback
-    if (!selectedActiveEmail && state.selectedMachineId === (state.currentMachine && state.currentMachine.machine_id)) {
+    const isLocalMachineSelected = !state.selectedMachineId || 
+        (state.currentMachine && state.selectedMachineId === state.currentMachine.machine_id);
+
+    if (isLocalMachineSelected) {
         selectedActiveEmail = state.accounts.find(a => a.id === state.activeAccountId)?.email;
+    } else {
+        if (state.snapshots && state.selectedMachineId) {
+            selectedSnap = state.snapshots.find(s => s.machine_id === state.selectedMachineId);
+            if (selectedSnap) {
+                selectedActiveEmail = selectedSnap.email;
+            }
+        }
     }
 
     sorted.forEach((acc) => {
@@ -519,7 +522,7 @@ function renderAccounts() {
         let qG = 0.0, qC = 0.0, qP = 0.0, hasLiveQuota = false;
 
         if (isActive) {
-            if (state.selectedMachineId === (state.currentMachine && state.currentMachine.machine_id) && state.liveQuota) {
+            if (isLocalMachineSelected && state.liveQuota) {
                 qG = state.liveQuota.gemini ?? 1.0;
                 qC = state.liveQuota.claude ?? 0.0;
                 qP = state.liveQuota.gpt    ?? 0.0;
