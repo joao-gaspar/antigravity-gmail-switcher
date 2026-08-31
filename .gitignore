@@ -17,3 +17,9 @@ watch_state.json
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+# SQLite database and machine identity (local only)
+quota_monitor.db
+machine_id.txt
+*.log
+

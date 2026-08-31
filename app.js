@@ -381,15 +381,33 @@ function getChooserUrl(email, service) {
 // Rank 3: Partially consumed available accounts (lowest usage first)
 // Rank 4: Blocked / Rate-limited accounts ordered by reset_at ascending (renewing soonest first!)
 function sortAccountsSmart(accountsList) {
+    // Determine active email and suggestion for selected machine
+    let activeEmailForSel = null;
+    let suggestEmailForSel = null;
+
+    if (state.machines && state.selectedMachineId) {
+        // If we have snapshots, find the active account and suggested candidate for selected machine
+        const selMachine = state.machines.find(m => m.machine_id === state.selectedMachineId);
+        if (state.snapshots) {
+            const snap = state.snapshots.find(s => s.machine_id === state.selectedMachineId);
+            if (snap) activeEmailForSel = snap.email;
+        }
+    }
+    // Fallback to local live variables if looking at the local machine
+    if (state.selectedMachineId === (state.currentMachine && state.currentMachine.machine_id)) {
+        activeEmailForSel = activeEmailForSel || (state.activeAccountId ? state.accounts.find(a => a.id === state.activeAccountId)?.email : null);
+        suggestEmailForSel = state.liveSuggestEmail;
+    }
+
     return [...accountsList].sort((a, b) => {
-        const aActive = a.id === state.activeAccountId;
-        const bActive = b.id === state.activeAccountId;
+        const aActive = activeEmailForSel && a.email === activeEmailForSel;
+        const bActive = activeEmailForSel && b.email === activeEmailForSel;
         if (aActive && !bActive) return -1;
         if (!aActive && bActive) return 1;
 
         // Rank 1: Recommended Candidate
-        const aSuggest = state.liveSuggestEmail && a.email === state.liveSuggestEmail;
-        const bSuggest = state.liveSuggestEmail && b.email === state.liveSuggestEmail;
+        const aSuggest = suggestEmailForSel && a.email === suggestEmailForSel;
+        const bSuggest = suggestEmailForSel && b.email === suggestEmailForSel;
         if (aSuggest && !bSuggest) return -1;
         if (!aSuggest && bSuggest) return 1;
 
@@ -455,8 +473,22 @@ function renderAccounts() {
 
     const sorted = sortAccountsSmart(filtered);
 
+    // Selected machine active email for UI badges
+    let selectedActiveEmail = null;
+    let selectedSnap = null;
+    if (state.snapshots && state.selectedMachineId) {
+        selectedSnap = state.snapshots.find(s => s.machine_id === state.selectedMachineId);
+        if (selectedSnap) {
+            selectedActiveEmail = selectedSnap.email;
+        }
+    }
+    // Local fallback
+    if (!selectedActiveEmail && state.selectedMachineId === (state.currentMachine && state.currentMachine.machine_id)) {
+        selectedActiveEmail = state.accounts.find(a => a.id === state.activeAccountId)?.email;
+    }
+
     sorted.forEach((acc) => {
-        const isActive = acc.id === state.activeAccountId;
+        const isActive = acc.email === selectedActiveEmail;
         const isBlocked = acc.status === 'exhausted' || acc.status === 'rate_limited';
         const cardTheme = isActive ? 'gradient-purple' : 'gradient-blue';
         const themeConfig = themeGradients[cardTheme] || themeGradients['gradient-blue'];
@@ -482,18 +514,25 @@ function renderAccounts() {
         const avatarInitials = emailPrefix.slice(0, 2).toUpperCase();
         const avatarHtml = `<div class="account-avatar" style="width: 28px; height: 28px; font-size: 0.8rem;">${avatarInitials}</div>`;
 
-        const tG = (acc.tokenGemini || 0).toLocaleString();
-        const tC = (acc.tokenClaude || 0).toLocaleString();
-        const tP = (acc.tokenGpt   || 0).toLocaleString();
-        const btnS = 'font-size:0.58rem; padding:1px 4px; height:16px; line-height:1; border-radius:3px;';
-
-        // Live Quota Bars
+        // Live Quota Bars: pull either from local live state OR from database snapshots for the selected machine
         let quotaBarsHtml = '';
-        if (isActive && state.liveQuota) {
-            const qG = state.liveQuota.gemini ?? 1.0;
-            const qC = state.liveQuota.claude ?? 0.0;
-            const qP = state.liveQuota.gpt    ?? 0.0;
+        let qG = 0.0, qC = 0.0, qP = 0.0, hasLiveQuota = false;
 
+        if (isActive) {
+            if (state.selectedMachineId === (state.currentMachine && state.currentMachine.machine_id) && state.liveQuota) {
+                qG = state.liveQuota.gemini ?? 1.0;
+                qC = state.liveQuota.claude ?? 0.0;
+                qP = state.liveQuota.gpt    ?? 0.0;
+                hasLiveQuota = true;
+            } else if (selectedSnap) {
+                qG = (selectedSnap.gemini_pct ?? 100) / 100;
+                qC = (selectedSnap.claude_pct ?? 0) / 100;
+                qP = (selectedSnap.gpt_pct ?? 0) / 100;
+                hasLiveQuota = true;
+            }
+        }
+
+        if (hasLiveQuota) {
             const renderBar = (frac, label) => {
                 const pct = Math.round(frac * 100);
                 const col = pct > 50 ? '#34d399' : pct > 15 ? '#f59e0b' : '#ef4444';
@@ -510,8 +549,8 @@ function renderAccounts() {
             quotaBarsHtml = `
             <div style="margin-top:4px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.06);">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
-                    <span style="font-size:0.54rem; color:#9ca3af; font-weight:600;"><i class="fa-solid fa-satellite-dish" style="font-size:0.5rem;"></i> Quota Real na API</span>
-                    <span style="font-size:0.5rem; color:#6b7280;">Language Server</span>
+                    <span style="font-size:0.54rem; color:#9ca3af; font-weight:600;"><i class="fa-solid fa-database" style="font-size:0.5rem;"></i> Quota no SQLite</span>
+                    <span style="font-size:0.5rem; color:#6b7280;">Histórico</span>
                 </div>
                 ${renderBar(qG, 'Gemini')}
                 ${renderBar(qC, 'Claude')}
@@ -522,7 +561,7 @@ function renderAccounts() {
         const isSuggest = state.liveSuggestEmail && acc.email === state.liveSuggestEmail && !isActive;
         const resetLabel = isBlocked && acc.reset_at ? formatResetRemaining(acc.reset_at) : null;
         const resetBadge = resetLabel ? `<span style="font-size:0.56rem; color:#f87171; background:rgba(239,68,68,0.12); padding:1px 5px; border-radius:3px; margin-left:4px;">${resetLabel}</span>` : '';
-        const suggestBadge = isSuggest ? `<span style="font-size:0.56rem; color:#34d399; background:rgba(52,211,153,0.15); border:1px solid rgba(52,211,153,0.3); padding:1px 6px; border-radius:3px; margin-left:4px; font-weight:600;"><i class="fa-solid fa-star" style="font-size:0.5rem;"></i> Próxima Recomendada</span>` : '';
+        const suggestBadge = isSuggest ? `<span style="font-size:0.56rem; color:#34d399; background:rgba(52,211,153,0.15); border:1px solid rgba(52,211,153,0.3); padding:1px 6px; border-radius:3px; margin-left:4px; font-weight:600;"><i class="fa-solid fa-star" style="font-size:0.5rem;"></i> Sugerida</span>` : '';
 
         card.innerHTML = `
             <div class="card-header" style="margin-bottom:0; align-items:center; display:flex; justify-content:space-between;">
@@ -688,12 +727,19 @@ function fetchLive() {
             state.liveSuggestEmail = suggestEmail;
             state.liveLastCheck = lastCheck;
 
+            // Save active machine details
+            if (data.machine) {
+                state.currentMachine = data.machine;
+                if (!state.selectedMachineId) {
+                    state.selectedMachineId = data.machine.machine_id;
+                }
+            }
+
             if (data.pool && data.pool.length > 0) {
                 data.pool.forEach(poolAcc => {
                     let local = state.accounts.find(a => a.email === poolAcc.email);
                     const blocked = poolAcc.status === 'rate_limited';
                     if (!local) {
-                        // Auto-add any account present in accounts.json but missing in local state
                         local = {
                             id: 'acc-' + poolAcc.email.replace(/[@.]/g, '-'),
                             name: poolAcc.label || poolAcc.email,
@@ -720,60 +766,110 @@ function fetchLive() {
                 saveAccounts();
             }
 
-            renderAccounts();
-            updateLiveBanner(agentEmail, suggestEmail, lastCheck);
+            // Fetch other machines and snapshots for multi-desktop selector
+            const machinesUrl = isLocal ? '/api/machines' : 'http://localhost:8000/api/machines';
+            const snapshotsUrl = isLocal ? '/api/snapshots' : 'http://localhost:8000/api/snapshots';
+
+            Promise.all([
+                fetch(machinesUrl).then(r => r.json()),
+                fetch(snapshotsUrl).then(r => r.json())
+            ])
+            .then(([machines, snapshots]) => {
+                state.machines = machines;
+                state.snapshots = snapshots;
+                renderAccounts();
+                updateLiveBanner(agentEmail, suggestEmail, lastCheck, false, data.suggestReason);
+            })
+            .catch(() => {
+                renderAccounts();
+                updateLiveBanner(agentEmail, suggestEmail, lastCheck, false, data.suggestReason);
+            });
         })
         .catch(err => {
             clearTimeout(timeoutId);
-            // In cloud mode without local server running, show cloud indicator
             updateLiveBanner(null, null, null, true);
         });
 }
 
-function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false) {
+function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false, suggestReason = '') {
     let banner = document.getElementById('live-banner');
     if (!banner) {
         banner = document.createElement('div');
         banner.id = 'live-banner';
-        banner.style.cssText = 'position:sticky; top:0; z-index:50; padding:4px 8px; font-size:0.65rem; display:flex; align-items:center; justify-content:space-between; gap:8px; border-bottom: 1px solid rgba(255,255,255,0.06); transition: all 0.3s;';
+        banner.style.cssText = 'position:sticky; top:0; z-index:50; padding:6px 12px; font-size:0.65rem; display:flex; align-items:center; justify-content:space-between; gap:8px; border-bottom: 1px solid rgba(255,255,255,0.06); transition: all 0.3s;';
         const grid = document.getElementById('accounts-grid');
         if (grid && grid.parentNode) grid.parentNode.insertBefore(banner, grid);
     }
     
-    if (isOffline && !agentEmail) {
+    if (isOffline) {
         banner.style.background = 'rgba(239, 68, 68, 0.1)';
         banner.innerHTML = `
             <div style="display:flex; align-items:center; gap:8px;">
                 <span style="color:#f87171; font-size:0.6rem; font-weight:700;">⚠ Servidor local offline</span>
-                <span style="color:#9ca3af; font-size:0.6rem;">Execute <code style="background:rgba(255,255,255,0.08); padding:0 4px; border-radius:3px;">python server.py</code> na pasta do projeto para ativar o monitoramento</span>
+                <span style="color:#9ca3af; font-size:0.6rem;">Execute o start-server.vbs para reativar o monitoramento</span>
             </div>
-            <span style="color:#6b7280; font-size:0.56rem; font-weight:bold;">SEM CONEXÃO</span>
+            <span style="color:#6b7280; font-size:0.56rem; font-weight:bold;">DESKTOP DISCONNECTED</span>
         `;
         return;
     }
 
     const ts = lastCheck ? new Date(lastCheck).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : '--:--';
+    
+    // Build machine selector dropdown
+    let machineOptions = '';
+    if (state.machines && state.machines.length > 0) {
+        state.machines.forEach(m => {
+            const isSel = m.machine_id === state.selectedMachineId ? 'selected' : '';
+            const activeMark = m.machine_id === (state.currentMachine && state.currentMachine.machine_id) ? ' (Este PC)' : '';
+            machineOptions += `<option value="${m.machine_id}" ${isSel}>💻 ${m.hostname}${activeMark}</option>`;
+        });
+    } else {
+        const curHost = (state.currentMachine && state.currentMachine.hostname) || 'Localhost';
+        machineOptions = `<option value="local">💻 ${curHost}</option>`;
+    }
+
+    const selectorHtml = `
+        <select id="machine-selector" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); color:#fff; font-size:0.6rem; padding:2px 6px; border-radius:4px; outline:none; font-weight:600; cursor:pointer;">
+            ${machineOptions}
+        </select>
+    `;
+
     const agentPart = agentEmail
-        ? `<span style="color:#a78bfa; font-weight:600;"><i class="fa-solid fa-robot" style="font-size:0.6rem;"></i> ${agentEmail}</span>`
-        : `<span style="color:#6b7280;">Agente não detectado</span>`;
+        ? `<span style="color:#a78bfa; font-weight:600;"><i class="fa-solid fa-robot" style="font-size:0.6rem;"></i> Ativa: ${agentEmail}</span>`
+        : `<span style="color:#6b7280;">Nenhum agente ativo</span>`;
+
+    const sugTitle = suggestReason ? `title="${suggestReason}"` : '';
     const suggestPart = suggestEmail
-        ? `<span style="color:#34d399; font-weight:600; cursor:pointer;" onclick="openSuggestLogin('${suggestEmail}')" title="Clique para abrir login da próxima conta recomendada"><i class="fa-solid fa-forward-step"></i> Próxima: ${suggestEmail}</span>`
+        ? `<span style="color:#34d399; font-weight:600; cursor:pointer;" onclick="openSuggestLogin('${suggestEmail}')" ${sugTitle}><i class="fa-solid fa-forward-step"></i> ⭐ Sugestão: ${suggestEmail}</span>`
         : '';
+
     banner.innerHTML = `
-        <div style="display:flex; align-items:center; gap:8px;">
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            ${selectorHtml}
             <span style="color:#6b7280; font-size:0.6rem;">⚡ ${ts}</span>
             ${agentPart}
             ${suggestPart}
         </div>
-        <span style="color:#4b5563; font-size:0.56rem; font-weight:bold;">LIVE API</span>
+        <span style="color:#10b981; font-size:0.56rem; font-weight:bold;">LIVE DATABASE</span>
     `;
+
+    // Dropdown change listener
+    const selEl = document.getElementById('machine-selector');
+    if (selEl) {
+        selEl.addEventListener('change', (e) => {
+            state.selectedMachineId = e.target.value;
+            renderAccounts();
+        });
+    }
+
     const agentAcc = agentEmail ? state.accounts.find(a => a.email === agentEmail) : null;
     if (agentAcc && (agentAcc.status === 'exhausted' || agentAcc.status === 'rate_limited')) {
         banner.style.background = 'rgba(239,68,68,0.12)';
     } else {
-        banner.style.background = 'rgba(167,139,250,0.08)';
+        banner.style.background = 'rgba(16,185,129,0.06)';
     }
 }
+
 
 function openSuggestLogin(email) {
     const url = `https://accounts.google.com/AccountChooser?Email=${encodeURIComponent(email)}&continue=${encodeURIComponent('https://accounts.google.com/')}`;

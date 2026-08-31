@@ -10,14 +10,20 @@ import time
 import urllib.parse
 import urllib.request
 import datetime
+import database  # local SQLite layer
 
 PORT = 8000
 DIRECTORY = os.path.dirname(os.path.abspath(__file__))
 SWITCHER_DIR = r"C:\Users\JoaoGaspar\.gemini\config\skills\gmail-switcher"
-WATCH_FILE   = os.path.join(SWITCHER_DIR, "watch_state.json")
+WATCH_FILE    = os.path.join(SWITCHER_DIR, "watch_state.json")
 ACCOUNTS_FILE = os.path.join(SWITCHER_DIR, "accounts.json")
 
 SSL_CTX = ssl._create_unverified_context()
+
+# ---- Machine identity (set once at startup) ----
+_MACHINE = database.get_machine_info()
+database.upsert_machine(_MACHINE['machine_id'], _MACHINE['hostname'],
+                        _MACHINE['ip'], _MACHINE['os'])
 
 # ---- Background probe cache ----
 _cache_lock = threading.Lock()
@@ -135,7 +141,12 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
         if parsed_url.path == '/api/live':
             self.handle_api_live()
         elif parsed_url.path == '/api/status':
-            self._json_response({"status": "ok", "version": "2.0"})
+            self._json_response({"status": "ok", "version": "2.0",
+                                  "machine": _MACHINE})
+        elif parsed_url.path == '/api/machines':
+            self._json_response(database.list_machines())
+        elif parsed_url.path == '/api/snapshots':
+            self._json_response(database.get_all_latest_snapshots())
         else:
             super().do_GET()
 
@@ -187,12 +198,15 @@ def _background_probe():
 
 
 def build_result(user_status, port, pid, now_iso):
+    mid = _MACHINE['machine_id']
     result = {
         "agent": None,
         "modelQuotas": {},
         "pool": [],
         "suggestEmail": None,
-        "lastCheck": now_iso
+        "suggestReason": None,
+        "lastCheck": now_iso,
+        "machine": _MACHINE
     }
     if user_status:
         email = user_status.get('email')
@@ -200,15 +214,30 @@ def build_result(user_status, port, pid, now_iso):
         result["agent"] = {"email": email, "name": name, "pid": pid, "port": port}
         auto_register_account_if_new(email, name)
         configs = user_status.get('cascadeModelConfigData', {}).get('clientModelConfigs', [])
+        gemini_vals, claude_vals, gpt_vals = [], [], []
+        first_reset = None
         for c in configs:
             lbl = c.get('label') or c.get('modelOrAlias', {}).get('model')
             q = c.get('quotaInfo')
             if q:
                 rem = q.get('remainingFraction')
-                result["modelQuotas"][lbl] = {
-                    "remaining": 0.0 if rem is None else float(rem),
-                    "resetTime": q.get('resetTime')
-                }
+                rem_val = 0.0 if rem is None else float(rem)
+                reset_t = q.get('resetTime')
+                if not first_reset and reset_t:
+                    first_reset = reset_t
+                result["modelQuotas"][lbl] = {"remaining": rem_val, "resetTime": reset_t}
+                if lbl and 'gemini' in lbl.lower():
+                    gemini_vals.append(rem_val)
+                elif lbl and 'claude' in lbl.lower():
+                    claude_vals.append(rem_val)
+                elif lbl and ('gpt' in lbl.lower() or 'openai' in lbl.lower()):
+                    gpt_vals.append(rem_val)
+        # Persist snapshot
+        g_pct = max(gemini_vals) * 100 if gemini_vals else 0.0
+        c_pct = max(claude_vals) * 100 if claude_vals else 0.0
+        p_pct = max(gpt_vals)    * 100 if gpt_vals    else 0.0
+        database.save_snapshot(mid, email, g_pct, c_pct, p_pct, first_reset)
+        database.upsert_account(mid, email, is_active=True)
         try:
             with open(WATCH_FILE, 'w', encoding='utf-8') as f:
                 json.dump({"last_check": now_iso, "agent_email": email,
@@ -221,25 +250,35 @@ def build_result(user_status, port, pid, now_iso):
             if os.path.exists(WATCH_FILE):
                 with open(WATCH_FILE, 'r', encoding='utf-8-sig') as f:
                     ws = json.load(f)
-                result["lastCheck"]    = ws.get("last_check")
-                result["agent"]        = {"email": ws.get("agent_email"), "name": ws.get("agent_name"),
-                                          "pid": ws.get("agent_pid"),    "port": ws.get("agent_port")}
+                result["lastCheck"]   = ws.get("last_check")
+                result["agent"]       = {"email": ws.get("agent_email"), "name": ws.get("agent_name"),
+                                         "pid": ws.get("agent_pid"),    "port": ws.get("agent_port")}
                 result["modelQuotas"] = ws.get("model_quotas", {})
         except Exception:
             pass
+    # Pool from accounts.json
+    pool = []
     try:
         if os.path.exists(ACCOUNTS_FILE):
             with open(ACCOUNTS_FILE, 'r', encoding='utf-8-sig') as f:
                 accs = json.load(f)
             pool = accs.get("accounts", [])
             result["pool"] = pool
+            # Persist each account in DB for this machine
             agent_email = result["agent"]["email"] if result["agent"] else None
-            for acc in pool:
-                if acc.get("status", "active") == "active" and acc.get("email") != agent_email:
-                    result["suggestEmail"] = acc.get("email")
-                    break
+            for i, acc in enumerate(pool):
+                database.upsert_account(mid, acc.get('email',''),
+                                        is_active=(acc.get('email') == agent_email),
+                                        carousel_pos=i,
+                                        status=acc.get('status','available'),
+                                        reset_at=acc.get('reset_at'))
     except Exception:
         pass
+    # Compute and persist suggestion
+    agent_email = result["agent"]["email"] if result["agent"] else None
+    sug = database.compute_and_save_suggestion(mid, agent_email, pool)
+    result["suggestEmail"]  = sug.get("email")
+    result["suggestReason"] = sug.get("reason")
     return result
 
 
