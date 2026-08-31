@@ -72,18 +72,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function loadAccounts() {
     const saved = localStorage.getItem('antigravity_gmail_switcher_accounts_v6');
+    let loaded = false;
     if (saved) {
         try {
-            state.accounts = JSON.parse(saved);
-            state.accounts.forEach(a => {
-                if (a.email === 'aluno10@tilab.com.br' && a.tokenGemini === 368) {
-                    a.tokenGemini = 0;
-                }
-            });
-        } catch (e) {
-            state.accounts = [];
-        }
-    } else {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                state.accounts = parsed;
+                state.accounts.forEach(a => {
+                    if (a.email === 'aluno10@tilab.com.br' && a.tokenGemini === 368) {
+                        a.tokenGemini = 0;
+                    }
+                });
+                loaded = true;
+            }
+        } catch (e) {}
+    }
+
+    if (!loaded) {
         state.accounts = [
             {
                         "id": "tilab-drive",
