@@ -8,7 +8,7 @@ let state = {
     searchQuery: '',
     activeNoteAccountId: null,
     selectedPresetTheme: 'gradient-blue',
-    activeAccountId: 'tilab-aluno10',
+    activeAccountId: 'tilab-drive',
     liveQuota: null,
     liveModelQuotas: null,
     liveSuggestEmail: null,
@@ -70,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function loadAccounts() {
-    const saved = localStorage.getItem('antigravity_gmail_switcher_accounts_v5');
+    const saved = localStorage.getItem('antigravity_gmail_switcher_accounts_v6');
     if (saved) {
         try {
             state.accounts = JSON.parse(saved);
@@ -84,26 +84,209 @@ function loadAccounts() {
         }
     } else {
         state.accounts = [
-            { id: 'tilab-drive', name: 'TI Lab Drive', email: 'drive@tilab.com.br', category: 'work', avatarUrl: '', theme: 'gradient-blue', notes: '', status: 'available', tokenGemini: 0, tokenClaude: 0, tokenGpt: 0 },
-            { id: 'tilab-geral', name: 'TI Lab Geral', email: 'tilab@tilab.com.br', category: 'work', avatarUrl: '', theme: 'gradient-purple', notes: '', status: 'available', tokenGemini: 0, tokenClaude: 0, tokenGpt: 0 },
-            { id: 'tilab-aluno01', name: 'TI Lab Aluno 01', email: 'aluno01@tilab.com.br', category: 'clients', avatarUrl: '', theme: 'gradient-sunset', notes: '', status: 'available', tokenGemini: 0, tokenClaude: 0, tokenGpt: 0 },
-            { id: 'tilab-aluno02', name: 'TI Lab Aluno 02', email: 'aluno02@tilab.com.br', category: 'clients', avatarUrl: '', theme: 'gradient-emerald', notes: '', status: 'available', tokenGemini: 0, tokenClaude: 0, tokenGpt: 0 },
-            { id: 'tilab-aluno03', name: 'TI Lab Aluno 03', email: 'aluno03@tilab.com.br', category: 'clients', avatarUrl: '', theme: 'gradient-amber', notes: '', status: 'available', tokenGemini: 0, tokenClaude: 0, tokenGpt: 0 },
-            { id: 'tilab-aluno04', name: 'TI Lab Aluno 04', email: 'aluno04@tilab.com.br', category: 'clients', avatarUrl: '', theme: 'gradient-cyber', notes: '', status: 'available', tokenGemini: 0, tokenClaude: 0, tokenGpt: 0 },
-            { id: 'tilab-aluno05', name: 'TI Lab Aluno 05', email: 'aluno05@tilab.com.br', category: 'clients', avatarUrl: '', theme: 'gradient-nordic', notes: '', status: 'exhausted', tokenGemini: 0, tokenClaude: 0, tokenGpt: 0 },
-            { id: 'tilab-aluno06', name: 'TI Lab Aluno 06', email: 'aluno06@tilab.com.br', category: 'clients', avatarUrl: '', theme: 'gradient-blue', notes: '', status: 'available', tokenGemini: 0, tokenClaude: 0, tokenGpt: 0 },
-            { id: 'tilab-aluno07', name: 'TI Lab Aluno 07', email: 'aluno07@tilab.com.br', category: 'clients', avatarUrl: '', theme: 'gradient-purple', notes: '', status: 'available', tokenGemini: 0, tokenClaude: 0, tokenGpt: 0 },
-            { id: 'tilab-aluno08', name: 'TI Lab Aluno 08', email: 'aluno08@tilab.com.br', category: 'clients', avatarUrl: '', theme: 'gradient-sunset', notes: '', status: 'available', tokenGemini: 0, tokenClaude: 0, tokenGpt: 0 },
-            { id: 'tilab-aluno09', name: 'TI Lab Aluno 09', email: 'aluno09@tilab.com.br', category: 'clients', avatarUrl: '', theme: 'gradient-emerald', notes: '', status: 'available', tokenGemini: 0, tokenClaude: 0, tokenGpt: 0 },
-            { id: 'tilab-aluno10', name: 'TI Lab Aluno 10', email: 'aluno10@tilab.com.br', category: 'clients', avatarUrl: '', theme: 'gradient-amber', notes: '', status: 'available', tokenGemini: 0, tokenClaude: 0, tokenGpt: 0 }
-        ];
+            {
+                        "id": "tilab-drive",
+                        "name": "TI Lab Drive",
+                        "email": "drive@tilab.com.br",
+                        "category": "work",
+                        "avatarUrl": "",
+                        "theme": "gradient-blue",
+                        "notes": "",
+                        "status": "available",
+                        "tokenGemini": 0,
+                        "tokenClaude": 36,
+                        "tokenGpt": 36,
+                        "reset_at": null,
+                        "exhausted_models": []
+            },
+            {
+                        "id": "tilab-geral",
+                        "name": "TI Lab Geral",
+                        "email": "tilab@tilab.com.br",
+                        "category": "work",
+                        "avatarUrl": "",
+                        "theme": "gradient-purple",
+                        "notes": "",
+                        "status": "available",
+                        "tokenGemini": 0,
+                        "tokenClaude": 0,
+                        "tokenGpt": 0,
+                        "reset_at": null,
+                        "exhausted_models": []
+            },
+            {
+                        "id": "tilab-aluno01",
+                        "name": "TI Lab Aluno 01",
+                        "email": "aluno01@tilab.com.br",
+                        "category": "clients",
+                        "avatarUrl": "",
+                        "theme": "gradient-sunset",
+                        "notes": "",
+                        "status": "available",
+                        "tokenGemini": 0,
+                        "tokenClaude": 0,
+                        "tokenGpt": 0,
+                        "reset_at": null,
+                        "exhausted_models": []
+            },
+            {
+                        "id": "tilab-aluno02",
+                        "name": "TI Lab Aluno 02",
+                        "email": "aluno02@tilab.com.br",
+                        "category": "clients",
+                        "avatarUrl": "",
+                        "theme": "gradient-emerald",
+                        "notes": "",
+                        "status": "available",
+                        "tokenGemini": 0,
+                        "tokenClaude": 0,
+                        "tokenGpt": 0,
+                        "reset_at": null,
+                        "exhausted_models": []
+            },
+            {
+                        "id": "tilab-aluno03",
+                        "name": "TI Lab Aluno 03",
+                        "email": "aluno03@tilab.com.br",
+                        "category": "clients",
+                        "avatarUrl": "",
+                        "theme": "gradient-amber",
+                        "notes": "",
+                        "status": "available",
+                        "tokenGemini": 0,
+                        "tokenClaude": 0,
+                        "tokenGpt": 0,
+                        "reset_at": null,
+                        "exhausted_models": []
+            },
+            {
+                        "id": "tilab-aluno04",
+                        "name": "TI Lab Aluno 04",
+                        "email": "aluno04@tilab.com.br",
+                        "category": "clients",
+                        "avatarUrl": "",
+                        "theme": "gradient-cyber",
+                        "notes": "",
+                        "status": "available",
+                        "tokenGemini": 0,
+                        "tokenClaude": 0,
+                        "tokenGpt": 0,
+                        "reset_at": null,
+                        "exhausted_models": []
+            },
+            {
+                        "id": "tilab-aluno05",
+                        "name": "TI Lab Aluno 05",
+                        "email": "aluno05@tilab.com.br",
+                        "category": "clients",
+                        "avatarUrl": "",
+                        "theme": "gradient-nordic",
+                        "notes": "",
+                        "status": "exhausted",
+                        "tokenGemini": 0,
+                        "tokenClaude": 0,
+                        "tokenGpt": 0,
+                        "reset_at": "2026-09-06 23:58:08",
+                        "exhausted_models": []
+            },
+            {
+                        "id": "tilab-aluno06",
+                        "name": "TI Lab Aluno 06",
+                        "email": "aluno06@tilab.com.br",
+                        "category": "clients",
+                        "avatarUrl": "",
+                        "theme": "gradient-blue",
+                        "notes": "",
+                        "status": "exhausted",
+                        "tokenGemini": 0,
+                        "tokenClaude": 0,
+                        "tokenGpt": 0,
+                        "reset_at": "2026-09-07 00:42:10",
+                        "exhausted_models": []
+            },
+            {
+                        "id": "tilab-aluno07",
+                        "name": "TI Lab Aluno 07",
+                        "email": "aluno07@tilab.com.br",
+                        "category": "clients",
+                        "avatarUrl": "",
+                        "theme": "gradient-purple",
+                        "notes": "",
+                        "status": "available",
+                        "tokenGemini": 0,
+                        "tokenClaude": 0,
+                        "tokenGpt": 0,
+                        "reset_at": null,
+                        "exhausted_models": []
+            },
+            {
+                        "id": "tilab-aluno08",
+                        "name": "TI Lab Aluno 08",
+                        "email": "aluno08@tilab.com.br",
+                        "category": "clients",
+                        "avatarUrl": "",
+                        "theme": "gradient-sunset",
+                        "notes": "",
+                        "status": "available",
+                        "tokenGemini": 0,
+                        "tokenClaude": 0,
+                        "tokenGpt": 0,
+                        "reset_at": null,
+                        "exhausted_models": []
+            },
+            {
+                        "id": "tilab-aluno09",
+                        "name": "TI Lab Aluno 09",
+                        "email": "aluno09@tilab.com.br",
+                        "category": "clients",
+                        "avatarUrl": "",
+                        "theme": "gradient-emerald",
+                        "notes": "",
+                        "status": "available",
+                        "tokenGemini": 0,
+                        "tokenClaude": 0,
+                        "tokenGpt": 0,
+                        "reset_at": null,
+                        "exhausted_models": []
+            },
+            {
+                        "id": "tilab-aluno10",
+                        "name": "TI Lab Aluno 10",
+                        "email": "aluno10@tilab.com.br",
+                        "category": "clients",
+                        "avatarUrl": "",
+                        "theme": "gradient-amber",
+                        "notes": "",
+                        "status": "available",
+                        "tokenGemini": 0,
+                        "tokenClaude": 0,
+                        "tokenGpt": 0,
+                        "reset_at": null,
+                        "exhausted_models": []
+            },
+            {
+                        "id": "acc-joaogaspar-gmail-com",
+                        "name": "Joaogaspar",
+                        "email": "joaogaspar@gmail.com",
+                        "category": "work",
+                        "avatarUrl": "",
+                        "theme": "gradient-cyber",
+                        "notes": "",
+                        "status": "available",
+                        "tokenGemini": 0,
+                        "tokenClaude": 0,
+                        "tokenGpt": 0,
+                        "reset_at": null,
+                        "exhausted_models": []
+            }
+];
         saveAccounts();
     }
     state.activeAccountId = localStorage.getItem('antigravity_active_account_id') || 'tilab-aluno10';
 }
 
 function saveAccounts() {
-    localStorage.setItem('antigravity_gmail_switcher_accounts_v5', JSON.stringify(state.accounts));
+    localStorage.setItem('antigravity_gmail_switcher_accounts_v6', JSON.stringify(state.accounts));
     localStorage.setItem('antigravity_active_account_id', state.activeAccountId);
 }
 
