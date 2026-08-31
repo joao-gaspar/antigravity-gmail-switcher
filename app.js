@@ -65,6 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadAccounts();
     setupEventListeners();
     renderAccounts();
+    updateLiveBanner(null, null, null, true);
     setInterval(updateTimers, 1000);
     fetchLive();
     setInterval(fetchLive, 5000);
@@ -880,11 +881,11 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
     if (!banner) {
         banner = document.createElement('div');
         banner.id = 'live-banner';
-        banner.style.cssText = 'position:relative; z-index:10; padding:7px 12px; font-size:0.65rem; border-radius:8px; border: 1px solid rgba(255,255,255,0.07); transition: background 0.3s;';
-        // Insert inside the sticky header slot — never inside the scrolling section
+        banner.style.cssText = 'position:relative; z-index:10; padding:7px 12px; font-size:0.65rem; border-radius:8px; border: 1px solid rgba(255,255,255,0.07); transition: background 0.3s; display:block;';
         const slot = document.getElementById('live-banner-slot');
         if (slot) slot.appendChild(banner);
     }
+    banner.style.display = 'block';
     
     // Build machine selector dropdown (ALWAYS rendered)
     let machineOptions = '';
