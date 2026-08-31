@@ -530,16 +530,26 @@ function renderAccounts() {
         let quotaBarsHtml = '';
         let qG = 0.0, qC = 0.0, qP = 0.0, hasLiveQuota = false;
 
-        if (isActive) {
-            if (isLocalMachineSelected && state.liveQuota) {
-                qG = state.liveQuota.gemini ?? 1.0;
-                qC = state.liveQuota.claude ?? 0.0;
-                qP = state.liveQuota.gpt    ?? 0.0;
+        if (isActive && isLocalMachineSelected && state.liveQuota) {
+            qG = state.liveQuota.gemini ?? 1.0;
+            qC = state.liveQuota.claude ?? 0.0;
+            qP = state.liveQuota.gpt    ?? 0.0;
+            hasLiveQuota = true;
+        } else {
+            // Match snapshot by email for the selected machine
+            const accSnap = state.snapshots && state.snapshots.find(s => 
+                s.email.toLowerCase() === acc.email.toLowerCase() && 
+                (!state.selectedMachineId || s.machine_id === state.selectedMachineId)
+            );
+            if (accSnap) {
+                qG = (accSnap.gemini_pct ?? 100) / 100;
+                qC = (accSnap.claude_pct ?? 0) / 100;
+                qP = (accSnap.gpt_pct ?? 0) / 100;
                 hasLiveQuota = true;
-            } else if (selectedSnap) {
-                qG = (selectedSnap.gemini_pct ?? 100) / 100;
-                qC = (selectedSnap.claude_pct ?? 0) / 100;
-                qP = (selectedSnap.gpt_pct ?? 0) / 100;
+            } else if (acc.tokenGemini !== undefined || acc.tokenClaude !== undefined) {
+                qG = (acc.tokenGemini ?? 100) / 100;
+                qC = (acc.tokenClaude ?? 0) / 100;
+                qP = (acc.tokenGpt    ?? 0) / 100;
                 hasLiveQuota = true;
             }
         }
@@ -823,23 +833,7 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
         if (slot) slot.appendChild(banner);
     }
     
-    if (isOffline) {
-        banner.style.background = 'rgba(239, 68, 68, 0.1)';
-        banner.innerHTML = `
-            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
-                <span style="color:#f87171; font-size:0.65rem; font-weight:700;">⚠ Servidor local offline nesta máquina</span>
-                <button onclick="openSetupModal()" style="background:linear-gradient(135deg, rgba(0,242,254,0.2) 0%, rgba(79,172,254,0.2) 100%); border:1px solid rgba(0,210,255,0.5); color:#00f2fe; font-size:0.6rem; padding:3px 10px; border-radius:6px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:5px; outline:none; box-shadow:0 0 10px rgba(0,242,254,0.2);">
-                    <i class="fa-solid fa-wand-magic-sparkles"></i> ✨ Ativar Assistente do AGS
-                </button>
-                <span style="color:#ef4444; font-size:0.56rem; font-weight:bold; margin-left:auto;">DISCONNECTED</span>
-            </div>
-        `;
-        return;
-    }
-
-    const ts = lastCheck ? new Date(lastCheck).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : '--:--';
-    
-    // Build machine selector dropdown
+    // Build machine selector dropdown (ALWAYS rendered)
     let machineOptions = '';
     if (state.machines && state.machines.length > 0) {
         state.machines.forEach(m => {
@@ -857,6 +851,33 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
             ${machineOptions}
         </select>
     `;
+
+    if (isOffline) {
+        banner.style.background = 'rgba(239, 68, 68, 0.1)';
+        banner.innerHTML = `
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:4px;">
+                ${selectorHtml}
+                <button onclick="openSetupModal()" style="background:linear-gradient(135deg, rgba(0,242,254,0.2) 0%, rgba(79,172,254,0.2) 100%); border:1px solid rgba(0,210,255,0.5); color:#00f2fe; font-size:0.58rem; padding:2px 8px; border-radius:5px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:4px; outline:none; box-shadow:0 0 10px rgba(0,242,254,0.2);">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> ✨ Ativar Assistente
+                </button>
+                <span style="color:#ef4444; font-size:0.56rem; font-weight:bold; margin-left:auto;">DISCONNECTED</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.05);">
+                <span style="color:#f87171; font-size:0.6rem; font-weight:600;">⚠ Servidor local offline nesta máquina</span>
+                <span style="color:#6b7280; font-size:0.56rem;">(Selecione outro PC acima ou ative o assistente)</span>
+            </div>
+        `;
+        const selElOffline = document.getElementById('machine-selector');
+        if (selElOffline) {
+            selElOffline.addEventListener('change', (e) => {
+                state.selectedMachineId = e.target.value;
+                renderAccounts();
+            });
+        }
+        return;
+    }
+
+    const ts = lastCheck ? new Date(lastCheck).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : '--:--';
 
     const agentPart = agentEmail
         ? `<span style="color:#a78bfa; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px;" title="${agentEmail}"><i class="fa-solid fa-robot" style="font-size:0.6rem;"></i> ${agentEmail}</span>`
