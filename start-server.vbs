@@ -20,11 +20,17 @@ Sub StartServer()
 End Sub
 
 Function IsServerRunning()
-    Dim oExec, sOut
-    Set oExec = oShell.Exec("powershell -NoProfile -NonInteractive -Command ""(Test-NetConnection -ComputerName localhost -Port 8000 -InformationLevel Quiet 2>$null).ToString()""")
-    Do While oExec.Status = 0 : WScript.Sleep 200 : Loop
-    sOut = Trim(oExec.StdOut.ReadAll())
-    IsServerRunning = (LCase(sOut) = "true")
+    On Error Resume Next
+    Dim oHTTP
+    Set oHTTP = CreateObject("MSXML2.ServerXMLHTTP.6.0")
+    oHTTP.open "GET", "http://localhost:8000/api/status", False
+    oHTTP.send
+    If Err.Number = 0 And oHTTP.status = 200 Then
+        IsServerRunning = True
+    Else
+        IsServerRunning = False
+    End If
+    On Error GoTo 0
 End Function
 
 ' Initial start

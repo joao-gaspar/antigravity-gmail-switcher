@@ -33,11 +33,19 @@ CACHE_TTL = 10  # seconds between real probes
 
 def probe_language_server():
     """Directly queries the active language_server_windows_x64 process for real-time status."""
+    # Hide subprocess console windows completely on Windows when running under pythonw.exe
+    startupinfo = None
+    if os.name == 'nt':
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startupinfo.wShowWindow = 0  # SW_HIDE
+
     ps_cmd = "Get-CimInstance Win32_Process -Filter \"name='language_server_windows_x64.exe'\" | Select-Object ProcessId, CommandLine | ConvertTo-Json -Compress"
     try:
         out = subprocess.check_output(
             ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_cmd],
             stderr=subprocess.DEVNULL,
+            startupinfo=startupinfo,
             timeout=4
         ).decode('utf-8', errors='ignore').strip()
         if not out:
@@ -52,6 +60,7 @@ def probe_language_server():
         netstat = subprocess.check_output(
             ["netstat", "-ano"],
             stderr=subprocess.DEVNULL,
+            startupinfo=startupinfo,
             timeout=4
         ).decode('utf-8', errors='ignore')
     except Exception:
