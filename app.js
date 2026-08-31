@@ -558,13 +558,13 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
     }
     
     if (isOffline && !agentEmail) {
-        banner.style.background = 'rgba(255,255,255,0.02)';
+        banner.style.background = 'rgba(239, 68, 68, 0.1)';
         banner.innerHTML = `
             <div style="display:flex; align-items:center; gap:8px;">
-                <span style="color:#6b7280; font-size:0.6rem;"><i class="fa-solid fa-cloud"></i> Modo Nuvem</span>
-                <span style="color:#9ca3af; font-size:0.6rem;">Abra o Antigravity IDE para ativar quota ao vivo</span>
+                <span style="color:#f87171; font-size:0.6rem; font-weight:700;">⚠ Servidor local offline</span>
+                <span style="color:#9ca3af; font-size:0.6rem;">Execute <code style="background:rgba(255,255,255,0.08); padding:0 4px; border-radius:3px;">python server.py</code> na pasta do projeto para ativar o monitoramento</span>
             </div>
-            <span style="color:#6b7280; font-size:0.56rem; font-weight:bold;">VERCEL</span>
+            <span style="color:#6b7280; font-size:0.56rem; font-weight:bold;">SEM CONEXÃO</span>
         `;
         return;
     }

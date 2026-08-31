@@ -29,3 +29,30 @@ Se tentou e não achou o que foi pedido, ou tentou e não conseguiu fazer o que 
 
 Pergunte ao usuário exatamente o que é para fazer.
 
+---
+
+## ARQUITETURA FUNDAMENTAL — LEIA ANTES DE QUALQUER MUDANÇA
+
+### O app REQUER conexão local. Não tem modo offline.
+
+O objetivo desta aplicação é **monitorar o consumo de quota de modelos de IA de um computador local específico** onde o Antigravity IDE está instalado e em execução.
+
+**Regras arquiteturais invioláveis:**
+
+1. **`server.py` DEVE estar rodando localmente** em `http://localhost:8000` para o app funcionar. Sem ele, o app não exibe dados de quota.
+
+2. **Não existe "modo offline", "modo nuvem standalone" ou "modo fallback".** O app no Vercel é apenas uma forma de abrir a interface no browser — mas ele **sempre** precisa se conectar ao `http://localhost:8000/api/live` da máquina local.
+
+3. **Não implemente lógica de fallback que exiba dados simulados, cacheados ou estimados** quando o servidor local estiver offline. Dados de quota ausentes devem mostrar estado indisponível, nunca dados fictícios.
+
+4. **O Vercel hospeda apenas o frontend estático** (HTML/CSS/JS). O backend (`server.py`) é **sempre local**. Nunca tente mover o backend para um servidor remoto — os dados são do Language Server local do Antigravity IDE, que só existe na máquina do usuário.
+
+5. **O fluxo correto é:**
+   - Usuário abre o app (Vercel ou localhost:8000)
+   - `app.js` faz `fetch('http://localhost:8000/api/live')`
+   - `server.py` local consulta o Language Server em tempo real
+   - Dados reais chegam ao frontend
+   - Se o `server.py` não estiver rodando: exibir mensagem clara de que o servidor local está offline, sem inventar dados.
+
+6. **Para iniciar o servidor local:** execute `python server.py` ou `start-server.vbs` na pasta do projeto em `C:\Users\JoaoGaspar\.gemini\antigravity-ide\scratch\gmail-switcher`.
+
