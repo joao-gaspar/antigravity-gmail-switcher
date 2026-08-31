@@ -1,11 +1,12 @@
 @echo off
-set AGS_VER=v2.4.1
+chcp 65001 >nul
+set AGS_VER=v2.4.2
 title Assistente do AGS %AGS_VER% - Instalador Automatico
 color 0A
 cls
 echo.
 echo  ========================================================
-echo    ⚡ ASSISTENTE DO AGS %AGS_VER% - CONFIGURACAO AUTOMATICA
+echo    [AGS] ASSISTENTE DO AGS %AGS_VER% - CONFIGURACAO AUTOMATICA
 echo  ========================================================
 echo.
 echo   Versao do Script: %AGS_VER% (Build 2026.08.31)
@@ -28,7 +29,7 @@ if not exist "%SETUP_FILE%" (
 if not exist "%SETUP_FILE%" (
     color 0C
     echo.
-    echo   ❌ ERRO: Nao foi possivel baixar o script setup.ps1.
+    echo   [ERRO] Nao foi possivel baixar o script setup.ps1.
     echo   Verifique sua conexao com a internet ou firewall.
     echo.
     pause
@@ -42,11 +43,11 @@ if exist "%SETUP_FILE%" del /f /q "%SETUP_FILE%" >nul 2>&1
 
 echo.
 echo   [3/3] Verificando se o servidor respondeu...
-powershell -NoProfile -Command "try { $r = Invoke-RestMethod -Uri 'http://127.0.0.1:8000/api/status' -TimeoutSec 3; Write-Host '   ✅ SERVIDOR ON: Hostname ' $r.machine.hostname -ForegroundColor Green } catch { Write-Host '   ⚠️ Servidor iniciando em segundo plano...' -ForegroundColor Yellow }"
+powershell -NoProfile -Command "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; try { $r = Invoke-RestMethod -Uri 'http://127.0.0.1:8000/api/status' -TimeoutSec 3; Write-Host '   [OK] SERVIDO ON: Hostname ' $r.machine.hostname -ForegroundColor Green } catch { Write-Host '   [INFO] Servidor iniciando em segundo plano...' -ForegroundColor Yellow }"
 
 echo.
 echo  ========================================================
-echo    ✅ INSTALACAO DO AGS %AGS_VER% CONCLUIDA!
+echo    [OK] INSTALACAO DO AGS %AGS_VER% CONCLUIDA COM SUCESSO!
 echo  ========================================================
 echo.
 echo   O Assistente do AGS ja esta ativo nesta maquina.
