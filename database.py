@@ -37,9 +37,10 @@ def _get_local_ip():
         return "127.0.0.1"
 
 def get_machine_info():
+    hostname = os.environ.get("COMPUTERNAME") or socket.gethostname()
     return {
         "machine_id": get_machine_id(),
-        "hostname": socket.gethostname(),
+        "hostname": hostname,
         "ip": _get_local_ip(),
         "os": platform.platform()
     }
