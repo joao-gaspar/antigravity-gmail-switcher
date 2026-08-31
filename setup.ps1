@@ -3,7 +3,7 @@ $ErrorActionPreference = "Stop"
 $OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-$AGS_VERSION = "2.4.3"
+$AGS_VERSION = "2.4.5"
 Write-Host "`n========================================================" -ForegroundColor Cyan
 Write-Host " [AGS] INICIANDO AUTO-SETUP DO AGS v$AGS_VERSION" -ForegroundColor Cyan
 Write-Host "========================================================`n" -ForegroundColor Cyan
@@ -77,13 +77,29 @@ if ($scheduledTaskOk) {
     try { Start-ScheduledTask -TaskName $taskName } catch {}
 }
 Start-Process -FilePath "wscript.exe" -ArgumentList "`"$vbsPath`"" -WindowStyle Hidden
-Start-Sleep -Seconds 3
+Start-Sleep -Seconds 2
 
+# Check status
 try {
     $res = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/status" -TimeoutSec 3
     Write-Host "`n========================================================" -ForegroundColor Green
-    Write-Host " ✅ SUCESSO! Monitor AGS rodando em '$($res.machine.hostname)'" -ForegroundColor Green
+    Write-Host " [OK] SUCESSO! Monitor AGS rodando em '$($res.machine.hostname)'" -ForegroundColor Green
     Write-Host "========================================================`n" -ForegroundColor Green
 } catch {
-    Write-Host "`n⚠️ Servidor em inicialização. Recarregue o painel no Vercel." -ForegroundColor Yellow
+    # Fallback: locate python.exe and launch server directly
+    $py = (Get-Command python -ErrorAction SilentlyContinue).Source
+    if (-not $py) { $py = (Get-Command py -ErrorAction SilentlyContinue).Source }
+    if (-not $py) { $py = (Get-Item "$env:LOCALAPPDATA\Programs\Python\Python*\python.exe" -ErrorAction SilentlyContinue | Select-Object -First 1).FullName }
+    if (-not $py) { $py = "python.exe" }
+    
+    Start-Process -FilePath $py -ArgumentList "-u server.py" -WorkingDirectory $destDir -WindowStyle Hidden
+    Start-Sleep -Seconds 2
+    try {
+        $res2 = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/status" -TimeoutSec 3
+        Write-Host "`n========================================================" -ForegroundColor Green
+        Write-Host " [OK] SUCESSO! Monitor AGS rodando em '$($res2.machine.hostname)'" -ForegroundColor Green
+        Write-Host "========================================================`n" -ForegroundColor Green
+    } catch {
+        Write-Host "`n[INFO] Servidor em inicializacao. Recarregue o painel no Vercel." -ForegroundColor Yellow
+    }
 }

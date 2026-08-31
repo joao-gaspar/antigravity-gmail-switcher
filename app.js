@@ -792,13 +792,15 @@ function fetchLive() {
             state.liveSuggestEmail = suggestEmail;
             state.liveLastCheck = lastCheck;
 
-            // Save active machine details
-            if (data.machine) {
-                state.currentMachine = data.machine;
-                if (!state.selectedMachineId) {
-                    state.selectedMachineId = data.machine.machine_id;
-                }
-            }
+    // Save active machine details
+    if (data.machine) {
+        state.currentMachine = data.machine;
+        if (data.machine.hostname) localStorage.setItem('antigravity_last_hostname', data.machine.hostname);
+        if (data.machine.username) localStorage.setItem('antigravity_last_username', data.machine.username);
+        if (!state.selectedMachineId) {
+            state.selectedMachineId = data.machine.machine_id;
+        }
+    }
 
             if (data.pool && data.pool.length > 0) {
                 data.pool.forEach(poolAcc => {
@@ -897,8 +899,10 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
             machineOptions += `<option value="${m.machine_id}" ${isSel}>💻 ${m.hostname}${userPart}${activeMark}</option>`;
         });
     } else {
-        const curHost = (state.currentMachine && state.currentMachine.hostname) || 'Localhost';
-        const curUser = (state.currentMachine && state.currentMachine.username) ? ` (${state.currentMachine.username})` : '';
+        const savedHost = localStorage.getItem('antigravity_last_hostname') || (state.currentMachine && state.currentMachine.hostname);
+        const savedUser = localStorage.getItem('antigravity_last_username') || (state.currentMachine && state.currentMachine.username);
+        const curHost = savedHost || 'Este Computador';
+        const curUser = savedUser ? ` (${savedUser})` : '';
         machineOptions = `<option value="local">💻 ${curHost}${curUser}</option>`;
     }
 

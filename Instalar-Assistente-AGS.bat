@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-set AGS_VER=v2.4.3
+set AGS_VER=v2.4.5
 title Assistente do AGS %AGS_VER% - Instalador Automatico
 color 0A
 cls
@@ -36,14 +36,14 @@ if not exist "%SETUP_FILE%" (
     exit /b 1
 )
 
-echo   [2/3] Executando configuracao no PowerShell...
-powershell -NoProfile -ExecutionPolicy Bypass -File "%SETUP_FILE%"
+echo   [2/3] Desbloqueando e executando no PowerShell...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Unblock-File -Path '%SETUP_FILE%' -ErrorAction SilentlyContinue; Get-Content '%SETUP_FILE%' | Out-String | Invoke-Expression"
 
 if exist "%SETUP_FILE%" del /f /q "%SETUP_FILE%" >nul 2>&1
 
 echo.
 echo   [3/3] Verificando se o servidor respondeu...
-powershell -NoProfile -Command "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; try { $r = Invoke-RestMethod -Uri 'http://127.0.0.1:8000/api/status' -TimeoutSec 3; Write-Host '   [OK] SERVIDO ON: Hostname ' $r.machine.hostname -ForegroundColor Green } catch { Write-Host '   [INFO] Servidor iniciando em segundo plano...' -ForegroundColor Yellow }"
+powershell -NoProfile -Command "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; try { $r = Invoke-RestMethod -Uri 'http://127.0.0.1:8000/api/status' -TimeoutSec 3; Write-Host '   [OK] SERVIDOR ON: Hostname ' $r.machine.hostname -ForegroundColor Green } catch { Write-Host '   [INFO] Servidor iniciando em segundo plano...' -ForegroundColor Yellow }"
 
 echo.
 echo  ========================================================
