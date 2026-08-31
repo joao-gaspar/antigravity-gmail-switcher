@@ -376,17 +376,11 @@ function getChooserUrl(email, service) {
     return `https://accounts.google.com/AccountChooser?Email=${encodeURIComponent(email)}&continue=${encodeURIComponent(continueUrl)}`;
 }
 
-// Smart Sorting:
-// 1. Active account at position 0
-// 2. 100% Unconsumed / Clean available accounts
-// 3. Partially consumed available accounts (highest remaining quota first)
-// 4. Rate-limited/Exhausted accounts ordered by reset_at ascending (the one renewing soonest comes first!)
-// Smart Sorting:
-// Rank 0: Active Account (pinned at very top)
-// Rank 1: Recommended Next Candidate (e.g. drive@tilab.com.br) -> immediately below active!
-// Rank 2: 100% Clean / Unused available accounts
-// Rank 3: Partially consumed available accounts (lowest usage first)
-// Rank 4: Blocked / Rate-limited accounts ordered by reset_at ascending (renewing soonest first!)
+// // Smart Sorting Priority Rules:
+// Rank 0: Conta ativa (fixada no topo)
+// Rank 1: Conta sugerida (indicada pelo servidor como próxima melhor)
+// Rank 2: Contas disponíveis com MAIS tokens restantes (maior capacidade restante primeiro)
+// Rank 3: Contas bloqueadas/esgotadas com MENOR prazo de retorno (renovando mais cedo primeiro)
 function sortAccountsSmart(accountsList) {
     let activeEmailForSel = null;
     let suggestEmailForSel = null;
@@ -404,8 +398,15 @@ function sortAccountsSmart(accountsList) {
         }
     }
 
-    // Capacity score: lower total consumption = more free = better
-    const consumed = acc => (acc.tokenGemini || 0) + (acc.tokenClaude || 0) + (acc.tokenGpt || 0);
+    // Remaining capacity: tokens not yet consumed (higher = better)
+    // tokenGemini/tokenClaude/tokenGpt are stored as 0..1 (fraction consumed)
+    // remaining = (1 - gemini) + (1 - claude) + (1 - gpt) = 3 - total_consumed
+    const remaining = acc => {
+        const g = acc.tokenGemini ?? 0;
+        const c = acc.tokenClaude ?? 0;
+        const p = acc.tokenGpt   ?? 0;
+        return 3 - (g + c + p); // higher = more tokens available
+    };
     const resetTs  = acc => acc.reset_at ? new Date(acc.reset_at.replace(' ', 'T')).getTime() : Infinity;
     const isBlocked = acc => acc.status === 'exhausted' || acc.status === 'rate_limited';
 
@@ -428,14 +429,14 @@ function sortAccountsSmart(accountsList) {
         if (!aBlocked && bBlocked) return -1;
         if (aBlocked && !bBlocked) return 1;
 
-        // 3a. Both available → least consumed (most capacity) first
+        // 3a. Both available → MOST remaining tokens first (highest capacity)
         if (!aBlocked && !bBlocked) {
-            const diff = consumed(a) - consumed(b);
+            const diff = remaining(b) - remaining(a); // descending: more tokens = top
             if (diff !== 0) return diff;
             return (a.name || a.email || '').localeCompare(b.name || b.email || '');
         }
 
-        // 3b. Both blocked → earliest reset first (soonest back online)
+        // 3b. Both blocked → EARLIEST reset first (shortest wait = top)
         const diff = resetTs(a) - resetTs(b);
         if (diff !== 0) return diff;
         return (a.name || a.email || '').localeCompare(b.name || b.email || '');
