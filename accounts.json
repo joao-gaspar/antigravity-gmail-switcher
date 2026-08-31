@@ -1,0 +1,363 @@
+{
+    "default_service": "gmail",
+    "accounts": [
+        {
+            "email": "drive@tilab.com.br",
+            "aliases": [
+                "drive",
+                "tilab drive",
+                "ti drive"
+            ],
+            "group": "tilab",
+            "label": "TI Lab Drive",
+            "status": "active",
+            "last_used": null,
+            "rate_limited_at": null,
+            "reset_at": null
+        },
+        {
+            "email": "tilab@tilab.com.br",
+            "aliases": [
+                "geral",
+                "tilab geral",
+                "tilab",
+                "ti lab"
+            ],
+            "group": "tilab",
+            "label": "TI Lab Geral",
+            "status": "active",
+            "last_used": null,
+            "rate_limited_at": null,
+            "reset_at": null
+        },
+        {
+            "email": "aluno01@tilab.com.br",
+            "aliases": [
+                "aluno 1",
+                "aluno1",
+                "aluno 01",
+                "aluno01"
+            ],
+            "group": "alunos",
+            "label": "Aluno 01",
+            "status": "active",
+            "last_used": null,
+            "rate_limited_at": null,
+            "reset_at": null
+        },
+        {
+            "email": "aluno02@tilab.com.br",
+            "aliases": [
+                "aluno 2",
+                "aluno2",
+                "aluno 02",
+                "aluno02"
+            ],
+            "group": "alunos",
+            "label": "Aluno 02",
+            "status": "active",
+            "last_used": null,
+            "rate_limited_at": null,
+            "reset_at": null
+        },
+        {
+            "email": "aluno03@tilab.com.br",
+            "aliases": [
+                "aluno 3",
+                "aluno3",
+                "aluno 03",
+                "aluno03"
+            ],
+            "group": "alunos",
+            "label": "Aluno 03",
+            "status": "active",
+            "last_used": null,
+            "rate_limited_at": null,
+            "reset_at": null
+        },
+        {
+            "email": "aluno04@tilab.com.br",
+            "aliases": [
+                "aluno 4",
+                "aluno4",
+                "aluno 04",
+                "aluno04"
+            ],
+            "group": "alunos",
+            "label": "Aluno 04",
+            "status": "active",
+            "last_used": null,
+            "rate_limited_at": null,
+            "reset_at": null
+        },
+        {
+            "email": "aluno05@tilab.com.br",
+            "aliases": [
+                "aluno 5",
+                "aluno5",
+                "aluno 05",
+                "aluno05"
+            ],
+            "group": "alunos",
+            "label": "Aluno 05",
+            "status": "rate_limited",
+            "last_used": null,
+            "rate_limited_at": "2026-08-31 00:41:28",
+            "reset_at": "2026-09-06 23:58:08"
+        },
+        {
+            "email": "aluno06@tilab.com.br",
+            "aliases": [
+                "aluno 6",
+                "aluno6",
+                "aluno 06",
+                "aluno06"
+            ],
+            "group": "alunos",
+            "label": "Aluno 06",
+            "status": "rate_limited",
+            "last_used": "2026-08-31 01:01:40",
+            "rate_limited_at": "2026-08-31 01:08:14",
+            "reset_at": "2026-09-07 00:42:10"
+        },
+        {
+            "email": "aluno07@tilab.com.br",
+            "aliases": [
+                "aluno 7",
+                "aluno7",
+                "aluno 07",
+                "aluno07"
+            ],
+            "group": "alunos",
+            "label": "Aluno 07",
+            "status": "active",
+            "last_used": null,
+            "rate_limited_at": null,
+            "reset_at": null
+        },
+        {
+            "email": "aluno08@tilab.com.br",
+            "aliases": [
+                "aluno 8",
+                "aluno8",
+                "aluno 08",
+                "aluno08"
+            ],
+            "group": "alunos",
+            "label": "Aluno 08",
+            "status": "active",
+            "last_used": "2026-08-31 01:40:18",
+            "rate_limited_at": null,
+            "reset_at": null,
+            "last_seen": "2026-08-31T01:50:50",
+            "last_quota_snapshot": {
+                "Gemini 3.6 Flash (Low)": {
+                    "remaining": 1,
+                    "resetTime": "2026-09-07T04:37:19Z"
+                },
+                "Gemini 3.5 Flash (High)": {
+                    "remaining": 1,
+                    "resetTime": "2026-09-07T04:37:19Z"
+                },
+                "Gemini 3.1 Pro (High)": {
+                    "remaining": 1,
+                    "resetTime": "2026-09-07T04:37:19Z"
+                },
+                "Gemini 3.7 Flash (High)": {
+                    "remaining": 1,
+                    "resetTime": "2026-09-07T04:37:19Z"
+                },
+                "Gemini 3.5 Flash (Medium)": {
+                    "remaining": 1,
+                    "resetTime": "2026-09-07T04:37:19Z"
+                },
+                "Gemini 3.1 Pro (Low)": {
+                    "remaining": 1,
+                    "resetTime": "2026-09-07T04:37:19Z"
+                },
+                "Gemini 3.5 Flash (Low)": {
+                    "remaining": 1,
+                    "resetTime": "2026-09-07T04:37:19Z"
+                },
+                "GPT-OSS 120B (Medium)": {
+                    "remaining": 0.688172,
+                    "resetTime": "2026-09-07T04:35:10Z"
+                },
+                "Claude Sonnet 4.6 (Thinking)": {
+                    "remaining": 0.688172,
+                    "resetTime": "2026-09-07T04:35:10Z"
+                },
+                "Gemini 3.6 Flash (High)": {
+                    "remaining": 1,
+                    "resetTime": "2026-09-07T04:37:19Z"
+                },
+                "Gemini 3.7 Flash (Low)": {
+                    "remaining": 1,
+                    "resetTime": "2026-09-07T04:37:19Z"
+                },
+                "Claude Opus 4.6 (Thinking)": {
+                    "remaining": 0.688172,
+                    "resetTime": "2026-09-07T04:35:10Z"
+                },
+                "Gemini 3.7 Flash (Medium)": {
+                    "remaining": 1,
+                    "resetTime": "2026-09-07T04:37:19Z"
+                },
+                "Gemini 3.6 Flash (Medium)": {
+                    "remaining": 1,
+                    "resetTime": "2026-09-07T04:37:19Z"
+                }
+            },
+            "exhausted_models": []
+        },
+        {
+            "email": "aluno09@tilab.com.br",
+            "aliases": [
+                "aluno 9",
+                "aluno9",
+                "aluno 09",
+                "aluno09"
+            ],
+            "group": "alunos",
+            "label": "Aluno 09",
+            "status": "active",
+            "last_used": null,
+            "rate_limited_at": null,
+            "reset_at": null
+        },
+        {
+            "email": "aluno10@tilab.com.br",
+            "aliases": [
+                "aluno 10",
+                "aluno10",
+                "aluno10"
+            ],
+            "group": "alunos",
+            "label": "Aluno 10",
+            "status": "active",
+            "last_used": "2026-08-31 01:50:50",
+            "rate_limited_at": null,
+            "reset_at": null,
+            "last_seen": "2026-08-31 01:50:50",
+            "last_quota_snapshot": {
+                "Gemini 3.6 Flash (Low)": {
+                    "remaining": 1,
+                    "resetTime": "2026-09-07T04:50:19Z"
+                },
+                "Gemini 3.7 Flash (High)": {
+                    "remaining": 1,
+                    "resetTime": "2026-09-07T04:50:19Z"
+                },
+                "Gemini 3.1 Pro (High)": {
+                    "remaining": 1,
+                    "resetTime": "2026-09-07T04:50:19Z"
+                },
+                "Gemini 3.5 Flash (High)": {
+                    "remaining": 1,
+                    "resetTime": "2026-09-07T04:50:19Z"
+                },
+                "GPT-OSS 120B (Medium)": {
+                    "remaining": 1,
+                    "resetTime": "2026-09-07T04:50:19Z"
+                },
+                "Gemini 3.5 Flash (Low)": {
+                    "remaining": 1,
+                    "resetTime": "2026-09-07T04:50:19Z"
+                },
+                "Gemini 3.1 Pro (Low)": {
+                    "remaining": 1,
+                    "resetTime": "2026-09-07T04:50:19Z"
+                },
+                "Claude Sonnet 4.6 (Thinking)": {
+                    "remaining": 1,
+                    "resetTime": "2026-09-07T04:50:19Z"
+                },
+                "Gemini 3.6 Flash (High)": {
+                    "remaining": 1,
+                    "resetTime": "2026-09-07T04:50:19Z"
+                },
+                "Gemini 3.7 Flash (Low)": {
+                    "remaining": 1,
+                    "resetTime": "2026-09-07T04:50:19Z"
+                },
+                "Claude Opus 4.6 (Thinking)": {
+                    "remaining": 1,
+                    "resetTime": "2026-09-07T04:50:19Z"
+                },
+                "Gemini 3.7 Flash (Medium)": {
+                    "remaining": 1,
+                    "resetTime": "2026-09-07T04:50:19Z"
+                },
+                "Gemini 3.5 Flash (Medium)": {
+                    "remaining": 1,
+                    "resetTime": "2026-09-07T04:50:19Z"
+                },
+                "Gemini 3.6 Flash (Medium)": {
+                    "remaining": 1,
+                    "resetTime": "2026-09-07T04:50:19Z"
+                }
+            },
+            "exhausted_models": []
+        },
+        {
+            "email": "joaogaspar@gmail.com",
+            "aliases": [
+                "joao"
+            ],
+            "group": "pessoal",
+            "label": "Joao Gaspar (Pessoal)",
+            "status": "active",
+            "last_used": null,
+            "rate_limited_at": null,
+            "reset_at": null
+        },
+        {
+            "email": "aluno11@tilab.com.br",
+            "aliases": [
+                "aluno11"
+            ],
+            "group": "alunos",
+            "label": "Aluno onze",
+            "status": "rate_limited",
+            "last_used": "2026-08-31 11:11:08",
+            "last_seen": "2026-08-31T11:11:08",
+            "rate_limited_at": "2026-08-31 12:02:02",
+            "reset_at": "2026-09-07 14:10:53",
+            "auto_reset_at": null,
+            "exhausted_models": [],
+            "last_quota_snapshot": null
+        },
+        {
+            "email": "aluno12@tilab.com.br",
+            "aliases": [
+                "aluno12"
+            ],
+            "group": "alunos",
+            "label": "Aluno doze",
+            "status": "rate_limited",
+            "last_used": "2026-08-31 12:24:40",
+            "last_seen": "2026-08-31T12:24:40",
+            "rate_limited_at": "2026-08-31 12:51:06",
+            "reset_at": "2026-09-07 15:25:29",
+            "auto_reset_at": null,
+            "exhausted_models": [],
+            "last_quota_snapshot": null
+        },
+        {
+            "email": "aluno13@tilab.com.br",
+            "aliases": [
+                "aluno13"
+            ],
+            "group": "alunos",
+            "label": "Aluno treze",
+            "status": "rate_limited",
+            "last_used": "2026-08-31 13:01:37",
+            "last_seen": "2026-08-31T13:01:37",
+            "rate_limited_at": "2026-08-31 14:55:36",
+            "reset_at": "2026-09-07 16:01:57",
+            "auto_reset_at": null,
+            "exhausted_models": [],
+            "last_quota_snapshot": null
+        }
+    ]
+}

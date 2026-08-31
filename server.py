@@ -14,7 +14,8 @@ import database  # local SQLite layer
 
 PORT = 8000
 DIRECTORY = os.path.dirname(os.path.abspath(__file__))
-SWITCHER_DIR = r"C:\Users\JoaoGaspar\.gemini\config\skills\gmail-switcher"
+USER_HOME = os.path.expanduser("~")
+SWITCHER_DIR = os.path.join(USER_HOME, ".gemini", "config", "skills", "gmail-switcher")
 WATCH_FILE    = os.path.join(SWITCHER_DIR, "watch_state.json")
 ACCOUNTS_FILE = os.path.join(SWITCHER_DIR, "accounts.json")
 

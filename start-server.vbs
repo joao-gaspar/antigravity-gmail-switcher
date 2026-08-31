@@ -1,12 +1,13 @@
-Dim oShell, sDir, sLogDir, sLog, sPy, sErr
+Dim oShell, sUserHome, sDir, sLogDir, sLog, sErr
 
 Set oShell = CreateObject("WScript.Shell")
 
-sPy    = "C:\Users\JoaoGaspar\AppData\Local\Programs\Python\Python311\python.exe"
-sDir   = "C:\Users\JoaoGaspar\.gemini\antigravity-ide\scratch\gmail-switcher"
-sLogDir = oShell.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\antigravity-monitor"
-sLog   = sLogDir & "\server.log"
-sErr   = sLogDir & "\server_err.log"
+sUserHome = oShell.ExpandEnvironmentStrings("%USERPROFILE%")
+sDir      = sUserHome & "\.gemini\antigravity-ide\scratch\gmail-switcher"
+
+sLogDir   = oShell.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\antigravity-monitor"
+sLog      = sLogDir & "\server.log"
+sErr      = sLogDir & "\server_err.log"
 
 ' Ensure log directory exists
 If Not CreateObject("Scripting.FileSystemObject").FolderExists(sLogDir) Then
@@ -14,10 +15,12 @@ If Not CreateObject("Scripting.FileSystemObject").FolderExists(sLogDir) Then
 End If
 
 Sub StartServer()
-    ' Use PowerShell to launch python.exe hidden and redirect stdout+stderr to log files
+    ' Use PowerShell to dynamically locate python.exe and launch server.py hidden
     Dim psCmd
     psCmd = "powershell -NoProfile -WindowStyle Hidden -Command " & _
-            """Start-Process -FilePath '" & sPy & "' " & _
+            """$py = (Get-Command python -ErrorAction SilentlyContinue).Source; " & _
+            "if (-not $py) { $py = '$env:LOCALAPPDATA\Programs\Python\Python311\python.exe' }; " & _
+            "Start-Process -FilePath $py " & _
             "-ArgumentList '-u server.py' " & _
             "-WorkingDirectory '" & sDir & "' " & _
             "-RedirectStandardOutput '" & sLog & "' " & _
