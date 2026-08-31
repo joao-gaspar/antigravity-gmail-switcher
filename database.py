@@ -1,4 +1,4 @@
-﻿"""
+"""
 database.py — SQLite data layer for Antigravity Quota Monitor
 Tracks: machines, per-machine account pools, quota snapshots, suggestions.
 """
@@ -149,20 +149,47 @@ def get_all_latest_snapshots():
     con.close()
     return rows
 
+def _account_capacity_score(acc):
+    """Lower score = more tokens consumed = less capacity.
+    We invert: higher return value = more remaining capacity.
+    tokenGemini/Claude/Gpt represent usage (0-100 scale); lower = less used = more free."""
+    used = (acc.get("tokenGemini") or 0) + (acc.get("tokenClaude") or 0) + (acc.get("tokenGpt") or 0)
+    return -used  # negate so sort ascending = best first
+
+
 def compute_and_save_suggestion(machine_id, active_email, account_pool):
     candidates = [a for a in account_pool if a.get("email") != active_email]
-    available = [c for c in candidates if c.get("status","available") == "available"]
-    blocked   = sorted([c for c in candidates if c.get("status","available") != "available"],
-                        key=lambda x: x.get("reset_at") or "9999")
-    if available:
-        suggestion = available[0].get("email")
-        reason = "Conta disponivel sem limitacao de quota"
-    elif blocked:
-        suggestion = blocked[0].get("email")
-        reason = f"Todas limitadas - renova em {blocked[0].get('reset_at','?')}"
+
+    available = [c for c in candidates if c.get("status", "available") == "available"]
+    blocked   = [c for c in candidates if c.get("status", "available") != "available"]
+
+    # Available: sort by most remaining capacity (least consumed first)
+    available_sorted = sorted(available, key=_account_capacity_score, reverse=True)
+
+    # Blocked: sort by earliest reset_at (soonest back online first)
+    def _reset_key(x):
+        r = x.get("reset_at")
+        return r if r else "9999-99-99"
+    blocked_sorted = sorted(blocked, key=_reset_key)
+
+    if available_sorted:
+        best = available_sorted[0]
+        used_pct = (
+            (best.get("tokenGemini") or 0)
+            + (best.get("tokenClaude") or 0)
+            + (best.get("tokenGpt") or 0)
+        ) // 3
+        remaining = max(0, 100 - used_pct)
+        suggestion = best.get("email")
+        reason = f"Maior capacidade restante (~{remaining}% livre)"
+    elif blocked_sorted:
+        best = blocked_sorted[0]
+        suggestion = best.get("email")
+        reason = f"Menor prazo de retorno - renova em {best.get('reset_at', '?')}"
     else:
         suggestion = None
         reason = "Nenhuma conta alternativa disponivel"
+
     now = _now()
     con = sqlite3.connect(DB_PATH)
     cur = con.cursor()

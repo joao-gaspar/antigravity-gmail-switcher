@@ -389,49 +389,49 @@ function sortAccountsSmart(accountsList) {
         (state.currentMachine && state.selectedMachineId === state.currentMachine.machine_id);
 
     if (isLocalMachineSelected) {
-        // Direct live API data for local computer (updated every 5s)
-        activeEmailForSel = state.accounts.find(a => a.id === state.activeAccountId)?.email;
+        activeEmailForSel  = state.accounts.find(a => a.id === state.activeAccountId)?.email;
         suggestEmailForSel = state.liveSuggestEmail;
     } else {
-        // Read from DB snapshot for other computers
         if (state.snapshots && state.selectedMachineId) {
             const snap = state.snapshots.find(s => s.machine_id === state.selectedMachineId);
             if (snap) activeEmailForSel = snap.email;
         }
     }
 
+    // Capacity score: lower total consumption = more free = better
+    const consumed = acc => (acc.tokenGemini || 0) + (acc.tokenClaude || 0) + (acc.tokenGpt || 0);
+    const resetTs  = acc => acc.reset_at ? new Date(acc.reset_at.replace(' ', 'T')).getTime() : Infinity;
+    const isBlocked = acc => acc.status === 'exhausted' || acc.status === 'rate_limited';
+
     return [...accountsList].sort((a, b) => {
+        // 0. Active account always first
         const aActive = activeEmailForSel && a.email === activeEmailForSel;
         const bActive = activeEmailForSel && b.email === activeEmailForSel;
         if (aActive && !bActive) return -1;
         if (!aActive && bActive) return 1;
 
-        // Rank 1: Recommended Candidate
+        // 1. Suggested account second
         const aSuggest = suggestEmailForSel && a.email === suggestEmailForSel;
         const bSuggest = suggestEmailForSel && b.email === suggestEmailForSel;
         if (aSuggest && !bSuggest) return -1;
         if (!aSuggest && bSuggest) return 1;
 
-        const aBlocked = a.status === 'exhausted' || a.status === 'rate_limited';
-        const bBlocked = b.status === 'exhausted' || b.status === 'rate_limited';
-
+        // 2. Available before blocked
+        const aBlocked = isBlocked(a);
+        const bBlocked = isBlocked(b);
         if (!aBlocked && bBlocked) return -1;
         if (aBlocked && !bBlocked) return 1;
 
-        if (aBlocked && bBlocked) {
-            const aReset = a.reset_at ? new Date(a.reset_at).getTime() : Infinity;
-            const bReset = b.reset_at ? new Date(b.reset_at).getTime() : Infinity;
-            return aReset - bReset;
+        // 3a. Both available → least consumed (most capacity) first
+        if (!aBlocked && !bBlocked) {
+            const diff = consumed(a) - consumed(b);
+            if (diff !== 0) return diff;
+            return a.name.localeCompare(b.name);
         }
 
-        const aTokens = (a.tokenGemini || 0) + (a.tokenClaude || 0) + (a.tokenGpt || 0);
-        const bTokens = (b.tokenGemini || 0) + (b.tokenClaude || 0) + (b.tokenGpt || 0);
-        const aExh = (a.exhausted_models || []).length;
-        const bExh = (b.exhausted_models || []).length;
-
-        if (aExh !== bExh) return aExh - bExh;
-        if (aTokens !== bTokens) return aTokens - bTokens;
-
+        // 3b. Both blocked → earliest reset first (soonest back online)
+        const diff = resetTs(a) - resetTs(b);
+        if (diff !== 0) return diff;
         return a.name.localeCompare(b.name);
     });
 }
@@ -818,8 +818,10 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
         banner.style.background = 'rgba(239, 68, 68, 0.1)';
         banner.innerHTML = `
             <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
-                <span style="color:#f87171; font-size:0.65rem; font-weight:700;">⚠ Servidor local offline</span>
-                <span style="color:#9ca3af; font-size:0.6rem;">Execute o start-server.vbs para reativar</span>
+                <span style="color:#f87171; font-size:0.65rem; font-weight:700;">⚠ Servidor local offline nesta máquina</span>
+                <button onclick="openSetupModal()" style="background:rgba(0,210,255,0.15); border:1px solid rgba(0,210,255,0.4); color:#00d2ff; font-size:0.6rem; padding:2px 8px; border-radius:5px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:4px; outline:none;">
+                    <i class="fa-solid fa-plus-circle"></i> Configurar AGS nesta máquina
+                </button>
                 <span style="color:#ef4444; font-size:0.56rem; font-weight:bold; margin-left:auto;">DISCONNECTED</span>
             </div>
         `;
@@ -943,6 +945,33 @@ function openModal(id = null) {
 function closeModal() {
     elements.accountModal.classList.remove('active');
 }
+
+function openSetupModal() {
+    const modal = document.getElementById('setup-modal');
+    if (modal) modal.classList.add('active');
+}
+
+function closeSetupModal() {
+    const modal = document.getElementById('setup-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const btnCloseSetup = document.getElementById('btn-close-setup-modal');
+    const btnCancelSetup = document.getElementById('btn-cancel-setup-modal');
+    const btnCopySetup = document.getElementById('btn-copy-setup-cmd');
+
+    if (btnCloseSetup) btnCloseSetup.addEventListener('click', closeSetupModal);
+    if (btnCancelSetup) btnCancelSetup.addEventListener('click', closeSetupModal);
+    if (btnCopySetup) {
+        btnCopySetup.addEventListener('click', () => {
+            const cmd = 'irm https://antigravity-gmail-switcher.vercel.app/setup.ps1 | iex';
+            navigator.clipboard.writeText(cmd).then(() => {
+                showToast('Comando copiado!');
+            });
+        });
+    }
+});
 
 function handleFormSubmit(e) {
     e.preventDefault();
