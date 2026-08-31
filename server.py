@@ -250,6 +250,7 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-requested-with')
+        self.send_header('Access-Control-Allow-Private-Network', 'true')
         self.send_header('Access-Control-Max-Age', '86400')
         self.send_header('Content-Length', '0')
         self.end_headers()
@@ -276,6 +277,7 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.send_header('Access-Control-Allow-Private-Network', 'true')
         self.end_headers()
         self.wfile.write(body)
 

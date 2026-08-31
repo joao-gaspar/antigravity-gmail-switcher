@@ -666,17 +666,26 @@ function updateTimers() {
     renderAccounts();
 }
 
-function fetchLive() {
-    // When served from Vercel (https://), connect to the local server (http://localhost:8000)
-    // Chrome/Edge allow https → http://localhost as a special case (localhost is considered secure).
-    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const liveEndpoint = isLocal ? '/api/live' : 'http://localhost:8000/api/live';
-
+function fetchSingleEndpoint(url) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
+    return fetch(url, { signal: controller.signal })
+        .then(res => { clearTimeout(timeoutId); return res.json(); });
+}
 
-    fetch(liveEndpoint, { signal: controller.signal })
-        .then(res => { clearTimeout(timeoutId); return res.json(); })
+function fetchLive() {
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    
+    let fetchPromise;
+    if (isLocal) {
+        fetchPromise = fetchSingleEndpoint('/api/live');
+    } else {
+        // Try localhost:8000 first; if IPv6/DNS fails, fallback to 127.0.0.1:8000
+        fetchPromise = fetchSingleEndpoint('http://localhost:8000/api/live')
+            .catch(() => fetchSingleEndpoint('http://127.0.0.1:8000/api/live'));
+    }
+
+    fetchPromise
         .then(data => {
             const agentEmail = data.agent && data.agent.email;
             const agentName = data.agent && data.agent.name;
