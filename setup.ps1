@@ -59,7 +59,7 @@ Start-ScheduledTask -TaskName $taskName
 Start-Sleep -Seconds 4
 
 try {
-    $res = Invoke-RestMethod -Uri "http://localhost:8000/api/status" -TimeoutSec 3
+    $res = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/status" -TimeoutSec 3
     Write-Host "`n========================================================" -ForegroundColor Green
     Write-Host " ✅ SUCESSO! Monitor AGS rodando em '$($res.machine.hostname)'" -ForegroundColor Green
     Write-Host "========================================================`n" -ForegroundColor Green

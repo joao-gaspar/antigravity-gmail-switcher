@@ -680,9 +680,9 @@ function fetchLive() {
     if (isLocal) {
         fetchPromise = fetchSingleEndpoint('/api/live');
     } else {
-        // Try localhost:8000 first; if IPv6/DNS fails, fallback to 127.0.0.1:8000
-        fetchPromise = fetchSingleEndpoint('http://localhost:8000/api/live')
-            .catch(() => fetchSingleEndpoint('http://127.0.0.1:8000/api/live'));
+        // Use 127.0.0.1 first to avoid Windows IPv6 (::1) DNS resolution delays
+        fetchPromise = fetchSingleEndpoint('http://127.0.0.1:8000/api/live')
+            .catch(() => fetchSingleEndpoint('http://localhost:8000/api/live'));
     }
 
     fetchPromise
