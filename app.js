@@ -808,7 +808,7 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
     if (!banner) {
         banner = document.createElement('div');
         banner.id = 'live-banner';
-        banner.style.cssText = 'position:sticky; top:0; z-index:50; padding:6px 12px; font-size:0.65rem; display:flex; align-items:center; justify-content:space-between; gap:8px; border-bottom: 1px solid rgba(255,255,255,0.06); transition: all 0.3s;';
+        banner.style.cssText = 'position:relative; z-index:10; margin:0 0 8px 0; padding:8px 12px; font-size:0.65rem; border-radius:10px; border: 1px solid rgba(255,255,255,0.07); transition: background 0.3s;';
         const grid = document.getElementById('accounts-grid');
         if (grid && grid.parentNode) grid.parentNode.insertBefore(banner, grid);
     }
@@ -816,11 +816,11 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
     if (isOffline) {
         banner.style.background = 'rgba(239, 68, 68, 0.1)';
         banner.innerHTML = `
-            <div style="display:flex; align-items:center; gap:8px;">
-                <span style="color:#f87171; font-size:0.6rem; font-weight:700;">⚠ Servidor local offline</span>
-                <span style="color:#9ca3af; font-size:0.6rem;">Execute o start-server.vbs para reativar o monitoramento</span>
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                <span style="color:#f87171; font-size:0.65rem; font-weight:700;">⚠ Servidor local offline</span>
+                <span style="color:#9ca3af; font-size:0.6rem;">Execute o start-server.vbs para reativar</span>
+                <span style="color:#ef4444; font-size:0.56rem; font-weight:bold; margin-left:auto;">DISCONNECTED</span>
             </div>
-            <span style="color:#6b7280; font-size:0.56rem; font-weight:bold;">DESKTOP DISCONNECTED</span>
         `;
         return;
     }
@@ -841,28 +841,33 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
     }
 
     const selectorHtml = `
-        <select id="machine-selector" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); color:#fff; font-size:0.6rem; padding:2px 6px; border-radius:4px; outline:none; font-weight:600; cursor:pointer;">
+        <select id="machine-selector" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); color:#e2e8f0; font-size:0.6rem; padding:3px 8px; border-radius:5px; outline:none; font-weight:600; cursor:pointer; max-width:160px;">
             ${machineOptions}
         </select>
     `;
 
     const agentPart = agentEmail
-        ? `<span style="color:#a78bfa; font-weight:600;"><i class="fa-solid fa-robot" style="font-size:0.6rem;"></i> Ativa: ${agentEmail}</span>`
+        ? `<span style="color:#a78bfa; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px;" title="${agentEmail}"><i class="fa-solid fa-robot" style="font-size:0.6rem;"></i> ${agentEmail}</span>`
         : `<span style="color:#6b7280;">Nenhum agente ativo</span>`;
 
     const sugTitle = suggestReason ? `title="${suggestReason}"` : '';
     const suggestPart = suggestEmail
-        ? `<span style="color:#34d399; font-weight:600; cursor:pointer;" onclick="openSuggestLogin('${suggestEmail}')" ${sugTitle}><i class="fa-solid fa-forward-step"></i> ⭐ Sugestão: ${suggestEmail}</span>`
-        : '';
+        ? `<span style="color:#34d399; font-weight:600; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px;" onclick="openSuggestLogin('${suggestEmail}')" ${sugTitle} title="${suggestEmail}"><i class="fa-solid fa-forward-step"></i> ⭐ ${suggestEmail}</span>`
+        : `<span style="color:#4b5563; font-style:italic; font-size:0.58rem;">sem sugestão</span>`;
 
     banner.innerHTML = `
-        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:5px;">
             ${selectorHtml}
-            <span style="color:#6b7280; font-size:0.6rem;">⚡ ${ts}</span>
+            <span style="color:#6b7280; font-size:0.58rem; white-space:nowrap;">⚡ ${ts}</span>
+            <span style="color:#10b981; font-size:0.56rem; font-weight:800; letter-spacing:0.05em; margin-left:auto;">LIVE DATABASE</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.05);">
+            <span style="color:#6b7280; font-size:0.56rem; white-space:nowrap; flex-shrink:0;">ATIVA</span>
             ${agentPart}
+            <span style="color:#374151; font-size:0.7rem; flex-shrink:0;">→</span>
+            <span style="color:#6b7280; font-size:0.56rem; white-space:nowrap; flex-shrink:0;">PRÓXIMA</span>
             ${suggestPart}
         </div>
-        <span style="color:#10b981; font-size:0.56rem; font-weight:bold;">LIVE DATABASE</span>
     `;
 
     // Dropdown change listener
@@ -876,9 +881,9 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
 
     const agentAcc = agentEmail ? state.accounts.find(a => a.email === agentEmail) : null;
     if (agentAcc && (agentAcc.status === 'exhausted' || agentAcc.status === 'rate_limited')) {
-        banner.style.background = 'rgba(239,68,68,0.12)';
+        banner.style.background = 'rgba(239,68,68,0.10)';
     } else {
-        banner.style.background = 'rgba(16,185,129,0.06)';
+        banner.style.background = 'rgba(16,185,129,0.05)';
     }
 }
 
