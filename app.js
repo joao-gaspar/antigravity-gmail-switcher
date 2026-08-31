@@ -819,8 +819,8 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
         banner.innerHTML = `
             <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
                 <span style="color:#f87171; font-size:0.65rem; font-weight:700;">⚠ Servidor local offline nesta máquina</span>
-                <button onclick="openSetupModal()" style="background:rgba(0,210,255,0.15); border:1px solid rgba(0,210,255,0.4); color:#00d2ff; font-size:0.6rem; padding:2px 8px; border-radius:5px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:4px; outline:none;">
-                    <i class="fa-solid fa-plus-circle"></i> Configurar AGS nesta máquina
+                <button onclick="openSetupModal()" style="background:linear-gradient(135deg, rgba(0,242,254,0.2) 0%, rgba(79,172,254,0.2) 100%); border:1px solid rgba(0,210,255,0.5); color:#00f2fe; font-size:0.6rem; padding:3px 10px; border-radius:6px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:5px; outline:none; box-shadow:0 0 10px rgba(0,242,254,0.2);">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> ✨ Ativar Assistente do AGS
                 </button>
                 <span style="color:#ef4444; font-size:0.56rem; font-weight:bold; margin-left:auto;">DISCONNECTED</span>
             </div>

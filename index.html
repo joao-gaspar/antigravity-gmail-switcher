@@ -217,41 +217,70 @@
         </div>
     </div>
 
-    <!-- Auto-Setup / Monitor New Machine Modal -->
+    <!-- Auto-Setup / Assistente do AGS Modal -->
     <div class="modal-overlay" id="setup-modal">
-        <div class="modal-container" style="max-width: 480px;">
-            <div class="modal-header">
-                <h2><i class="fa-solid fa-desktop" style="color:#00d2ff; margin-right:6px;"></i> Configurar AGS nesta Máquina</h2>
+        <div class="modal-container" style="max-width: 500px; border-radius: 18px; border: 1px solid rgba(0, 210, 255, 0.25); background: #0d1117; box-shadow: 0 25px 60px rgba(0,0,0,0.7);">
+            <div class="modal-header" style="border-bottom: 1px solid rgba(255,255,255,0.06); padding: 18px 20px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="width:36px; height:36px; background:linear-gradient(135deg, #00f2fe 0%, #4facfe 100%); border-radius:10px; display:flex; align-items:center; justify-content:center; color:#000; font-size:1.1rem; box-shadow:0 0 15px rgba(0,242,254,0.3);">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    </div>
+                    <div style="text-align:left;">
+                        <h2 style="font-size:1.1rem; font-weight:700; color:#fff; margin:0;">Assistente do AGS</h2>
+                        <span style="font-size:0.68rem; color:#9ca3af;">Ativação rápida em 1-Clique para esta Máquina</span>
+                    </div>
+                </div>
                 <button class="btn-close-modal" id="btn-close-setup-modal">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
-            <div class="modal-body" style="display:flex; flex-direction:column; gap:14px; padding:16px;">
-                <p style="color:#9ca3af; font-size:0.75rem; margin:0;">
-                    Para registrar e monitorar automaticamente o consumo nesta máquina local (em tempo real), você precisa ativar o servidor e watchdog do AGS.
+            <div class="modal-body" style="display:flex; flex-direction:column; gap:16px; padding:20px;">
+                <p style="color:#cbd5e1; font-size:0.78rem; margin:0; line-height:1.4; text-align:left;">
+                    Para monitorar o consumo em tempo real nesta máquina, instale o <strong>Assistente do AGS</strong>:
                 </p>
                 
-                <div style="background:rgba(0,210,255,0.06); border:1px solid rgba(0,210,255,0.2); border-radius:8px; padding:12px;">
-                    <span style="color:#00d2ff; font-size:0.7rem; font-weight:700; display:block; margin-bottom:6px;">
-                        ⚡ Comando de Auto-Setup (1-Clique no PowerShell):
+                <!-- Option 1: Direct Download (Main Easy Way) -->
+                <div style="background:linear-gradient(135deg, rgba(0,210,255,0.12) 0%, rgba(59,130,246,0.08) 100%); border:1px solid rgba(0,210,255,0.3); border-radius:12px; padding:16px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:10px;">
+                    <span style="color:#00d2ff; font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">
+                        ✨ Recomendado — Sem comandos
                     </span>
-                    <div style="position:relative;">
-                        <code id="setup-cmd-code" style="display:block; background:#0f172a; color:#38bdf8; padding:8px 10px; border-radius:6px; font-size:0.65rem; word-break:break-all; border:1px solid rgba(255,255,255,0.08);">irm https://antigravity-gmail-switcher.vercel.app/setup.ps1 | iex</code>
+                    <a href="Instalar-Assistente-AGS.bat" download style="display:inline-flex; align-items:center; justify-content:center; gap:8px; width:100%; max-width:320px; padding:12px 20px; background:linear-gradient(135deg, #00f2fe 0%, #4facfe 100%); color:#030712; font-weight:800; font-size:0.85rem; border-radius:10px; text-decoration:none; box-shadow:0 4px 20px rgba(0,242,254,0.35); transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                        <i class="fa-solid fa-circle-arrow-down" style="font-size:1rem;"></i> Baixar Assistente AGS (.bat)
+                    </a>
+                    <span style="color:#94a3b8; font-size:0.68rem;">
+                        💡 Basta baixar e dar <strong>dois cliques</strong> no arquivo. Instalação 100% automática!
+                    </span>
+                </div>
+
+                <!-- 3 Visual Steps -->
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; text-align:center;">
+                    <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); padding:10px 6px; border-radius:8px;">
+                        <span style="font-size:1.1rem; display:block; margin-bottom:4px;">1️⃣</span>
+                        <span style="color:#e2e8f0; font-size:0.65rem; font-weight:600; display:block;">Baixe o arquivo</span>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); padding:10px 6px; border-radius:8px;">
+                        <span style="font-size:1.1rem; display:block; margin-bottom:4px;">2️⃣</span>
+                        <span style="color:#e2e8f0; font-size:0.65rem; font-weight:600; display:block;">Execute (.bat)</span>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); padding:10px 6px; border-radius:8px;">
+                        <span style="font-size:1.1rem; display:block; margin-bottom:4px;">3️⃣</span>
+                        <span style="color:#34d399; font-size:0.65rem; font-weight:600; display:block;">Pronto!</span>
+                    </div>
+                </div>
+
+                <!-- Option 2: PowerShell (Advanced toggle) -->
+                <details style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:8px 12px; font-size:0.7rem; color:#9ca3af; text-align:left;">
+                    <summary style="cursor:pointer; font-weight:600; color:#cbd5e1;">Opção via comando (PowerShell)</summary>
+                    <div style="margin-top:8px; position:relative;">
+                        <code id="setup-cmd-code" style="display:block; background:#0f172a; color:#38bdf8; padding:8px 10px; border-radius:6px; font-size:0.63rem; word-break:break-all; border:1px solid rgba(255,255,255,0.08);">irm https://antigravity-gmail-switcher.vercel.app/setup.ps1 | iex</code>
                         <button id="btn-copy-setup-cmd" style="position:absolute; right:4px; top:4px; background:rgba(56,189,248,0.2); border:1px solid #38bdf8; color:#fff; font-size:0.6rem; padding:3px 8px; border-radius:4px; cursor:pointer;">
                             <i class="fa-solid fa-copy"></i> Copiar
                         </button>
                     </div>
-                </div>
+                </details>
 
-                <div style="color:#9ca3af; font-size:0.7rem; display:flex; flex-direction:column; gap:6px;">
-                    <span><strong>Passo a Passo:</strong></span>
-                    <span>1. Abra o <strong>PowerShell</strong> no Windows nesta nova máquina</span>
-                    <span>2. Cole e execute o comando acima</span>
-                    <span>3. Pronto! O serviço rodará invisível e se conectará ao painel Vercel.</span>
-                </div>
-
-                <div class="modal-footer" style="padding-top:8px;">
-                    <button type="button" class="btn btn-secondary" id="btn-cancel-setup-modal">Fechar</button>
+                <div class="modal-footer" style="padding-top:4px; margin-top:0;">
+                    <button type="button" class="btn btn-secondary" id="btn-cancel-setup-modal" style="width:100%;">Fechar</button>
                 </div>
             </div>
         </div>
