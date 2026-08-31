@@ -981,32 +981,73 @@ function closeNotesDrawer() {
     state.activeNoteAccountId = null;
 }
 
+const AUTH_CRED_KEY = 'antigravity_creds_v1';
+
+function doLogin(email, pass) {
+    return email === 'joaogaspar@gmail.com' && pass === '2025@Switcher';
+}
+
+function applyLogin(overlay) {
+    localStorage.setItem('antigravity_authenticated', 'true');
+    if (overlay) overlay.style.display = 'none';
+    showToast('Acesso concedido!');
+}
+
 function checkAuth() {
-    const isLogged = localStorage.getItem('antigravity_authenticated');
     const overlay = document.getElementById('login-overlay');
-    if (isLogged === 'true') {
-        if (overlay) overlay.style.display = 'none';
-    } else {
-        if (overlay) overlay.style.display = 'flex';
-        // Intercept form submit
-        const form = document.getElementById('login-form');
-        if (form) {
-            form.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const email = document.getElementById('login-email').value.trim();
-                const pass = document.getElementById('login-password').value;
-                const errDiv = document.getElementById('login-error');
-                
-                if (email === 'joaogaspar@gmail.com' && pass === '2025@Switcher') {
-                    localStorage.setItem('antigravity_authenticated', 'true');
-                    if (overlay) overlay.style.display = 'none';
-                    if (errDiv) errDiv.style.display = 'none';
-                    showToast('Acesso concedido!');
-                } else {
-                    if (errDiv) errDiv.style.display = 'block';
-                }
-            });
+
+    // 1. Try auto-login from saved credentials
+    try {
+        const saved = localStorage.getItem(AUTH_CRED_KEY);
+        if (saved) {
+            const { e, p } = JSON.parse(saved);
+            if (doLogin(e, p)) {
+                localStorage.setItem('antigravity_authenticated', 'true');
+                if (overlay) overlay.style.display = 'none';
+                return; // already logged in, no screen shown
+            }
         }
+    } catch (_) {}
+
+    // 2. Already authenticated flag
+    if (localStorage.getItem('antigravity_authenticated') === 'true') {
+        if (overlay) overlay.style.display = 'none';
+        return;
+    }
+
+    // 3. Show login form
+    if (overlay) overlay.style.display = 'flex';
+
+    // Pre-fill form if partial creds exist
+    try {
+        const saved = localStorage.getItem(AUTH_CRED_KEY);
+        if (saved) {
+            const { e, p } = JSON.parse(saved);
+            const emailEl = document.getElementById('login-email');
+            const passEl  = document.getElementById('login-password');
+            if (emailEl && e) emailEl.value = e;
+            if (passEl  && p) passEl.value  = p;
+        }
+    } catch (_) {}
+
+    const form = document.getElementById('login-form');
+    if (form && !form._authBound) {
+        form._authBound = true;
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email  = document.getElementById('login-email').value.trim();
+            const pass   = document.getElementById('login-password').value;
+            const errDiv = document.getElementById('login-error');
+
+            if (doLogin(email, pass)) {
+                // Persist credentials so future visits auto-login
+                localStorage.setItem(AUTH_CRED_KEY, JSON.stringify({ e: email, p: pass }));
+                applyLogin(overlay);
+                if (errDiv) errDiv.style.display = 'none';
+            } else {
+                if (errDiv) errDiv.style.display = 'block';
+            }
+        });
     }
 }
 
