@@ -8,6 +8,7 @@ import socket
 import platform
 import uuid
 import datetime
+import getpass
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "quota_monitor.db")
 MACHINE_ID_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "machine_id.txt")
@@ -38,9 +39,14 @@ def _get_local_ip():
 
 def get_machine_info():
     hostname = os.environ.get("COMPUTERNAME") or socket.gethostname()
+    try:
+        username = os.environ.get("USERNAME") or getpass.getuser()
+    except Exception:
+        username = ""
     return {
         "machine_id": get_machine_id(),
         "hostname": hostname,
+        "username": username,
         "ip": _get_local_ip(),
         "os": platform.platform()
     }
@@ -52,6 +58,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS machines (
             machine_id  TEXT PRIMARY KEY,
             hostname    TEXT,
+            username    TEXT,
             ip          TEXT,
             os          TEXT,
             first_seen  TEXT,
@@ -94,16 +101,21 @@ def init_db():
 def _now():
     return datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 
-def upsert_machine(machine_id, hostname, ip, os_str):
+def upsert_machine(machine_id, hostname, ip, os_str, username=None):
     now = _now()
     con = sqlite3.connect(DB_PATH)
     cur = con.cursor()
+    try:
+        cur.execute("ALTER TABLE machines ADD COLUMN username TEXT")
+    except Exception:
+        pass
     cur.execute("""
-        INSERT INTO machines (machine_id, hostname, ip, os, first_seen, last_seen)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO machines (machine_id, hostname, ip, os, first_seen, last_seen, username)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(machine_id) DO UPDATE SET
-            hostname=excluded.hostname, ip=excluded.ip, last_seen=excluded.last_seen
-    """, (machine_id, hostname, ip, os_str, now, now))
+            hostname=excluded.hostname, ip=excluded.ip, last_seen=excluded.last_seen,
+            username=COALESCE(excluded.username, machines.username)
+    """, (machine_id, hostname, ip, os_str, now, now, username))
     con.commit()
     con.close()
 

@@ -301,6 +301,29 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, format, *args):
         pass
 
+def _sync_to_cloud(result):
+    try:
+        url = "https://antigravity-gmail-switcher.vercel.app/api/sync"
+        m_info = result.get("machine", {})
+        payload = {
+            "machine_id": m_info.get("machine_id"),
+            "hostname": m_info.get("hostname"),
+            "username": m_info.get("username"),
+            "ip": m_info.get("ip"),
+            "os": m_info.get("os"),
+            "active_email": result.get("agent", {}).get("email") if result.get("agent") else None,
+            "suggest_email": result.get("suggestEmail"),
+            "suggest_reason": result.get("suggestReason"),
+            "model_quotas": result.get("modelQuotas"),
+            "last_seen": result.get("lastCheck"),
+            "accounts": database.get_machine_accounts(m_info.get("machine_id"))
+        }
+        data = json.dumps(payload).encode('utf-8')
+        req = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/json'})
+        urllib.request.urlopen(req, timeout=4)
+    except Exception:
+        pass
+
 def _background_probe():
     """Continuously probes the Language Server and updates the cache."""
     global _cached_result, _cache_ts
@@ -312,6 +335,7 @@ def _background_probe():
             with _cache_lock:
                 _cached_result = result
                 _cache_ts = time.time()
+            _sync_to_cloud(result)
         except Exception as e:
             print(f"[probe error] {e}")
         time.sleep(CACHE_TTL)

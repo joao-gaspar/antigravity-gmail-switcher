@@ -830,28 +830,48 @@ function fetchLive() {
                 saveAccounts();
             }
 
-            // Fetch other machines and snapshots for multi-desktop selector
+            // Fetch local & cloud synced machines
             const machinesUrl  = isLocal ? '/api/machines'  : 'http://127.0.0.1:8000/api/machines';
             const snapshotsUrl = isLocal ? '/api/snapshots' : 'http://127.0.0.1:8000/api/snapshots';
 
             Promise.all([
-                fetch(machinesUrl).then(r => r.json()),
-                fetch(snapshotsUrl).then(r => r.json())
+                fetch(machinesUrl).then(r => r.json()).catch(() => []),
+                fetch(snapshotsUrl).then(r => r.json()).catch(() => []),
+                fetch('/api/sync').then(r => r.json()).catch(() => ({ machines: [] }))
             ])
-            .then(([machines, snapshots]) => {
-                state.machines = machines;
+            .then(([localMachines, snapshots, cloudData]) => {
+                const combined = [...(localMachines || [])];
+                if (cloudData && cloudData.machines) {
+                    cloudData.machines.forEach(cm => {
+                        let match = combined.find(m => m.machine_id === cm.machine_id);
+                        if (!match) {
+                            combined.push(cm);
+                        } else {
+                            Object.assign(match, cm);
+                        }
+                    });
+                }
+                state.machines = combined;
                 state.snapshots = snapshots;
-                renderAccounts();
-                updateLiveBanner(agentEmail, suggestEmail, lastCheck, false, data.suggestReason);
-            })
-            .catch(() => {
                 renderAccounts();
                 updateLiveBanner(agentEmail, suggestEmail, lastCheck, false, data.suggestReason);
             });
         })
         .catch(err => {
             clearTimeout(timeoutId);
-            updateLiveBanner(null, null, null, true);
+            // Even if offline, try fetching cloud synced machines
+            fetch('/api/sync')
+                .then(r => r.json())
+                .then(cloudData => {
+                    if (cloudData && cloudData.machines && cloudData.machines.length > 0) {
+                        state.machines = cloudData.machines;
+                        renderAccounts();
+                    }
+                    updateLiveBanner(null, null, null, true);
+                })
+                .catch(() => {
+                    updateLiveBanner(null, null, null, true);
+                });
         });
 }
 
@@ -871,12 +891,14 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
     if (state.machines && state.machines.length > 0) {
         state.machines.forEach(m => {
             const isSel = m.machine_id === state.selectedMachineId ? 'selected' : '';
-            const activeMark = m.machine_id === (state.currentMachine && state.currentMachine.machine_id) ? ' (Este PC)' : '';
-            machineOptions += `<option value="${m.machine_id}" ${isSel}>💻 ${m.hostname}${activeMark}</option>`;
+            const userPart = m.username ? ` (${m.username})` : '';
+            const activeMark = m.machine_id === (state.currentMachine && state.currentMachine.machine_id) ? ' ⭐ (Este PC)' : '';
+            machineOptions += `<option value="${m.machine_id}" ${isSel}>💻 ${m.hostname}${userPart}${activeMark}</option>`;
         });
     } else {
         const curHost = (state.currentMachine && state.currentMachine.hostname) || 'Localhost';
-        machineOptions = `<option value="local">💻 ${curHost}</option>`;
+        const curUser = (state.currentMachine && state.currentMachine.username) ? ` (${state.currentMachine.username})` : '';
+        machineOptions = `<option value="local">💻 ${curHost}${curUser}</option>`;
     }
 
     const selectorHtml = `
