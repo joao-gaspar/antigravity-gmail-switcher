@@ -221,6 +221,38 @@
         <span id="toast-message">E-mail copiado com sucesso!</span>
     </div>
 
-    <script src="app.js?v=14"></script>
+    <!-- Premium Login Overlay -->
+    <div id="login-overlay" style="position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(10,10,12,0.96); backdrop-filter:blur(16px); z-index:99999; display:flex; align-items:center; justify-content:center; font-family:'Outfit', sans-serif;">
+        <div style="width:340px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); padding:32px 28px; border-radius:16px; box-shadow:0 20px 50px rgba(0,0,0,0.5); display:flex; flex-direction:column; gap:16px; text-align:center;">
+            <div style="width:48px; height:48px; background:linear-gradient(135deg, #a78bfa 0%, #7b2ff7 100%); border-radius:12px; display:flex; align-items:center; justify-content:center; margin:0 auto; font-size:1.3rem; color:#fff; box-shadow:0 0 15px rgba(123,47,247,0.3);">
+                <i class="fa-solid fa-lock"></i>
+            </div>
+            <div>
+                <h3 style="color:#fff; font-size:1.15rem; font-weight:700; margin-bottom:4px;">Acesso Restrito</h3>
+                <p style="color:#9ca3af; font-size:0.75rem;">Insira suas credenciais para gerenciar as contas</p>
+            </div>
+            
+            <form id="login-form" style="display:flex; flex-direction:column; gap:12px;">
+                <div style="display:flex; flex-direction:column; text-align:left; gap:4px;">
+                    <label style="color:#9ca3af; font-size:0.65rem; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">E-mail</label>
+                    <input type="email" id="login-email" required placeholder="joao...`@`gmail.com" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px 12px; color:#fff; font-size:0.8rem; outline:none; transition:border 0.3s;" onfocus="this.style.border='1px solid #a78bfa'" onblur="this.style.border='1px solid rgba(255,255,255,0.08)'">
+                </div>
+                <div style="display:flex; flex-direction:column; text-align:left; gap:4px;">
+                    <label style="color:#9ca3af; font-size:0.65rem; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Senha</label>
+                    <input type="password" id="login-password" required placeholder="••••••••" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px 12px; color:#fff; font-size:0.8rem; outline:none; transition:border 0.3s;" onfocus="this.style.border='1px solid #a78bfa'" onblur="this.style.border='1px solid rgba(255,255,255,0.08)'">
+                </div>
+                
+                <div id="login-error" style="color:#f87171; font-size:0.7rem; font-weight:600; display:none; margin-top:4px;">
+                    ❌ Credenciais incorretas. Tente novamente.
+                </div>
+                
+                <button type="submit" style="background:linear-gradient(135deg, #a78bfa 0%, #7b2ff7 100%); border:none; border-radius:8px; padding:10px; color:#fff; font-size:0.8rem; font-weight:600; cursor:pointer; margin-top:8px; transition:box-shadow 0.3s;" onmouseover="this.style.boxShadow='0 0 15px rgba(123,47,247,0.4)'" onmouseout="this.style.boxShadow='none'">
+                    Entrar <i class="fa-solid fa-arrow-right-to-bracket" style="margin-left:4px; font-size:0.75rem;"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js?v=15"></script>
 </body>
 </html>

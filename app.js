@@ -61,6 +61,7 @@ const elements = {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
+    checkAuth();
     loadAccounts();
     setupEventListeners();
     renderAccounts();
@@ -966,3 +967,33 @@ function closeNotesDrawer() {
     elements.appContainer.classList.remove('drawer-open');
     state.activeNoteAccountId = null;
 }
+
+function checkAuth() {
+    const isLogged = sessionStorage.getItem('antigravity_authenticated');
+    const overlay = document.getElementById('login-overlay');
+    if (isLogged === 'true') {
+        if (overlay) overlay.style.display = 'none';
+    } else {
+        if (overlay) overlay.style.display = 'flex';
+        // Intercept form submit
+        const form = document.getElementById('login-form');
+        if (form) {
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const email = document.getElementById('login-email').value.trim();
+                const pass = document.getElementById('login-password').value;
+                const errDiv = document.getElementById('login-error');
+                
+                if (email === 'joaogaspar@gmail.com' && pass === '2025@Switcher') {
+                    sessionStorage.setItem('antigravity_authenticated', 'true');
+                    if (overlay) overlay.style.display = 'none';
+                    if (errDiv) errDiv.style.display = 'none';
+                    showToast('Acesso concedido!');
+                } else {
+                    if (errDiv) errDiv.style.display = 'block';
+                }
+            });
+        }
+    }
+}
+
