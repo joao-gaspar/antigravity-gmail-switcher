@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gmail Fast Switcher - Antigravity</title>
+    <!-- Google Fonts for premium typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css?v=10">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation (Desktop) / Top bar -->
+        <aside class="sidebar">
+            <div class="logo-area">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-bolt-lightning"></i>
+                </div>
+                <h2>Switcher</h2>
+            </div>
+            
+            <nav class="nav-menu">
+                <button class="nav-item active" id="btn-show-accounts">
+                    <i class="fa-solid fa-users-viewfinder"></i>
+                    <span>Contas</span>
+                </button>
+                <button class="nav-item" id="btn-show-guide">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <span>Guia de Uso</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="status-indicator">
+                    <span class="pulse-dot"></span>
+                    <span>Antigravity Ready</span>
+                </div>
+            </div>
+        </aside>
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <div class="sticky-header" style="padding: 6px 8px; border-bottom: 1px solid var(--border-color);">
+                <!-- Ultra-compact top bar -->
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;">
+                    <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-primary); letter-spacing: 0.5px;">📬 Gmail Switcher</span>
+                    <div style="display: flex; gap: 4px;">
+                        <button class="btn-ctrl" id="btn-next-account" title="Próxima Conta Disponível" style="width: 26px; height: 26px; font-size: 0.75rem; background: rgba(0,210,255,0.12); border: 1px solid rgba(0,210,255,0.3); border-radius: 6px; color: #00d2ff; display:flex; align-items:center; justify-content:center;">
+                            <i class="fa-solid fa-angles-right"></i>
+                        </button>
+                        <button class="btn-ctrl" id="btn-add-account" title="Adicionar Conta" style="width: 26px; height: 26px; font-size: 0.75rem; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-secondary); display:flex; align-items:center; justify-content:center;">
+                            <i class="fa-solid fa-user-plus"></i>
+                        </button>
+                    </div>
+                </div>
+                <!-- Search + Filter on one row -->
+                <div style="display: flex; gap: 4px;" id="controls-section">
+                    <div style="position: relative; flex: 1;">
+                        <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:6px; top:50%; transform:translateY(-50%); font-size:0.65rem; color:var(--text-muted);"></i>
+                        <input type="text" id="search-input" placeholder="Pesquisar..." style="width:100%; padding: 4px 6px 4px 22px; background: rgba(255,255,255,0.04); border: 1px solid var(--border-color); border-radius: 6px; color:#fff; font-size:0.7rem; outline:none; box-sizing:border-box;">
+                    </div>
+                    <select id="category-filter-select" style="padding: 4px 6px; background: rgba(255,255,255,0.04); border: 1px solid var(--border-color); border-radius: 6px; color:#fff; font-size:0.7rem; outline:none;">
+                        <option value="all">Todos</option>
+                        <option value="work">Trabalho</option>
+                        <option value="personal">Pessoal</option>
+                        <option value="clients">Clientes</option>
+                        <option value="other">Outros</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Accounts Section -->
+            <section class="accounts-section" id="view-accounts">
+                <div class="accounts-grid" id="accounts-grid">
+                    <!-- Dynamic Account Cards will be injected here by app.js -->
+                </div>
+                
+                <!-- Empty State -->
+                <div class="empty-state hidden" id="empty-state">
+                    <div class="empty-icon">
+                        <i class="fa-regular fa-envelope-open"></i>
+                    </div>
+                    <h3>Nenhuma conta cadastrada</h3>
+                    <p>Adicione sua primeira conta do Gmail para começar a alternar rapidamente.</p>
+                    <button class="btn btn-primary" id="btn-empty-add">
+                        <i class="fa-solid fa-plus"></i> Adicionar Conta
+                    </button>
+                </div>
+            </section>
+
+            <!-- Guide Section (Hidden by default) -->
+            <section class="guide-section hidden" id="view-guide">
+                <div class="guide-card">
+                    <h2>Como Funciona o Switcher?</h2>
+                    <p>O Gmail Fast Switcher utiliza o mecanismo nativo do Google chamado <strong>Account Chooser</strong> para contornar problemas comuns em que os links de contas (como <code>/u/0/</code> e <code>/u/1/</code>) quebram ou mudam de ordem quando você faz login em novos computadores ou dispositivos.</p>
+                    
+                    <div class="guide-steps">
+                        <div class="step-card">
+                            <div class="step-num">1</div>
+                            <h3>Endereçamento Inteligente</h3>
+                            <p>Ao invés de indexar por números fixos, nós geramos links dinâmicos usando o e-mail exato como chave:</p>
+                            <code>https://accounts.google.com/AccountChooser?Email=seuemail@gmail.com&continue=...</code>
+                        </div>
+                        
+                        <div class="step-card">
+                            <div class="step-num">2</div>
+                            <h3>Prevenção de Erros</h3>
+                            <p>Se você já estiver logado nessa conta no navegador, o Google abre a conta instantaneamente. Se a sessão expirou, ele pede a senha diretamente para a conta correta.</p>
+                        </div>
+                        
+                        <div class="step-card">
+                            <div class="step-num">3</div>
+                            <h3>Suporte a Múltiplos Serviços</h3>
+                            <p>Cada conta no painel possui atalhos diretos não só para o <strong>Gmail</strong>, mas também para o <strong>Google Calendar</strong>, <strong>Google Drive</strong> e <strong>Google Meet</strong>.</p>
+                        </div>
+                    </div>
+
+                    <div class="guide-footer">
+                        <h3>Dica do Antigravity 🚀</h3>
+                        <p>Deixe esta aplicação aberta em um painel do navegador ou como aba fixa no seu ambiente de desenvolvimento. Você economizará dezenas de cliques diários.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+        
+        <!-- Notes Drawer (Account specific sidebar notes) -->
+        <aside class="notes-drawer" id="notes-drawer">
+            <div class="drawer-header">
+                <h3><i class="fa-regular fa-clipboard"></i> Notas da Conta</h3>
+                <button class="btn-close-drawer" id="btn-close-drawer">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="drawer-content">
+                <div class="drawer-account-info">
+                    <div class="drawer-avatar" id="drawer-avatar">JS</div>
+                    <div>
+                        <h4 id="drawer-account-name">Nome do Usuário</h4>
+                        <span id="drawer-account-email">email@gmail.com</span>
+                    </div>
+                </div>
+                <div class="notes-textarea-container">
+                    <label for="drawer-notes">Lembretes & Tarefas Rápidas:</label>
+                    <textarea id="drawer-notes" placeholder="Digite aqui anotações importantes para esta conta do Gmail (Ex: links de reuniões, e-mails pendentes, pendências de clientes...). Suas notas são salvas automaticamente!"></textarea>
+                </div>
+                <div class="notes-footer">
+                    <span class="saved-indicator"><i class="fa-solid fa-circle-check"></i> Salvo automaticamente</span>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Modals Section -->
+    <div class="modal-overlay" id="account-modal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2 id="modal-title">Adicionar Conta</h2>
+                <button class="btn-close-modal" id="btn-close-modal">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <form id="account-form" class="modal-body">
+                <input type="hidden" id="account-id">
+                
+                <div class="form-group">
+                    <label for="account-name">Nome ou Marcador</label>
+                    <input type="text" id="account-name" placeholder="Ex: Trabalho, Pessoal, Cliente XPTO" required autocomplete="off">
+                </div>
+                
+                <div class="form-group">
+                    <label for="account-email">Endereço de E-mail Google</label>
+                    <input type="email" id="account-email" placeholder="Ex: usuario@gmail.com" required autocomplete="off">
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group col">
+                        <label for="account-category">Categoria</label>
+                        <select id="account-category">
+                            <option value="work">Trabalho</option>
+                            <option value="personal">Pessoal</option>
+                            <option value="clients">Clientes</option>
+                            <option value="other">Outros</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group col">
+                        <label for="account-avatar-url">URL da Foto (Opcional)</label>
+                        <input type="url" id="account-avatar-url" placeholder="https://..." autocomplete="off">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Tema de Cores (Gradiente)</label>
+                    <div class="color-presets" id="color-presets">
+                        <!-- Theme presets generated in Javascript or HTML -->
+                        <div class="color-preset active" data-theme="gradient-blue" style="background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);"></div>
+                        <div class="color-preset" data-theme="gradient-purple" style="background: linear-gradient(135deg, #b92b27 0%, #1565c0 100%);"></div>
+                        <div class="color-preset" data-theme="gradient-sunset" style="background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);"></div>
+                        <div class="color-preset" data-theme="gradient-emerald" style="background: linear-gradient(135deg, #0ba360 0%, #3cba92 100%);"></div>
+                        <div class="color-preset" data-theme="gradient-amber" style="background: linear-gradient(135deg, #f857a6 0%, #ff5858 100%);"></div>
+                        <div class="color-preset" data-theme="gradient-cyber" style="background: linear-gradient(135deg, #f107a3 0%, #7b2ff7 100%);"></div>
+                        <div class="color-preset" data-theme="gradient-nordic" style="background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);"></div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="btn-cancel-modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar Conta</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification for clipboard -->
+    <div class="toast" id="toast-notification">
+        <i class="fa-solid fa-check-double"></i>
+        <span id="toast-message">E-mail copiado com sucesso!</span>
+    </div>
+
+    <script src="app.js?v=14"></script>
+</body>
+</html>

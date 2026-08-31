@@ -1,0 +1,19 @@
+# Local state & logs
+__pycache__/
+*.pyc
+.system_generated/
+*.log
+watch_state.json
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+
+# Vercel
+.vercel/
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
