@@ -19,7 +19,9 @@ Sub StartServer()
     Dim psCmd
     psCmd = "powershell -NoProfile -WindowStyle Hidden -Command " & _
             """$py = (Get-Command python -ErrorAction SilentlyContinue).Source; " & _
-            "if (-not $py) { $py = '$env:LOCALAPPDATA\Programs\Python\Python311\python.exe' }; " & _
+            "if (-not $py) { $py = (Get-Command py -ErrorAction SilentlyContinue).Source }; " & _
+            "if (-not $py) { $py = (Get-Item '$env:LOCALAPPDATA\Programs\Python\Python*\python.exe' -ErrorAction SilentlyContinue | Select-Object -First 1).FullName }; " & _
+            "if (-not $py) { $py = 'python.exe' }; " & _
             "Start-Process -FilePath $py " & _
             "-ArgumentList '-u server.py' " & _
             "-WorkingDirectory '" & sDir & "' " & _
@@ -34,7 +36,7 @@ Function IsServerRunning()
     Dim oHTTP
     Set oHTTP = CreateObject("MSXML2.ServerXMLHTTP.6.0")
     oHTTP.setTimeouts 2000, 2000, 2000, 2000
-    oHTTP.open "GET", "http://localhost:8000/api/status", False
+    oHTTP.open "GET", "http://127.0.0.1:8000/api/status", False
     oHTTP.send
     If Err.Number = 0 And oHTTP.status = 200 Then
         IsServerRunning = True
