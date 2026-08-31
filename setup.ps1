@@ -1,8 +1,9 @@
 # AGS (Antigravity Gmail Switcher) Auto-Setup Script for Windows
 $ErrorActionPreference = "Stop"
 
+$AGS_VERSION = "2.4.0"
 Write-Host "`n========================================================" -ForegroundColor Cyan
-Write-Host " 🚀 INICIANDO AUTO-SETUP DO AGS (GMAIL SWITCHER)" -ForegroundColor Cyan
+Write-Host " 🚀 INICIANDO AUTO-SETUP DO AGS v$AGS_VERSION" -ForegroundColor Cyan
 Write-Host "========================================================`n" -ForegroundColor Cyan
 
 $destDir = "$env:USERPROFILE\.gemini\antigravity-ide\scratch\gmail-switcher"

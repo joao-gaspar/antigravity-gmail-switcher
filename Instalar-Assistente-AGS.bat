@@ -1,12 +1,14 @@
 @echo off
-title Assistente do AGS - Instalador Automatico
+set AGS_VER=v2.4.0
+title Assistente do AGS %AGS_VER% - Instalador Automatico
 color 0A
 cls
 echo.
 echo  ========================================================
-echo    ⚡ ASSISTENTE DO AGS - CONFIGURACAO AUTOMATICA
+echo    ⚡ ASSISTENTE DO AGS %AGS_VER% - CONFIGURACAO AUTOMATICA
 echo  ========================================================
 echo.
+echo   Versao do Script: %AGS_VER% (Build 2026.08.31)
 echo   Configurando o monitoramento do Antigravity nesta maquina...
 echo   Por favor, aguarde alguns segundos.
 echo.
