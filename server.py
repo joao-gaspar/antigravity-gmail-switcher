@@ -112,21 +112,38 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=DIRECTORY, **kwargs)
 
+    def _send_cors_headers(self):
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-requested-with')
+        self.send_header('Access-Control-Max-Age', '86400')
+
+    def do_OPTIONS(self):
+        """Handle CORS preflight requests from Vercel-hosted frontend."""
+        self.send_response(204)
+        self._send_cors_headers()
+        self.send_header('Content-Length', '0')
+        self.end_headers()
+
     def do_GET(self):
         parsed_url = urllib.parse.urlparse(self.path)
         if parsed_url.path == '/api/live':
             self.handle_api_live()
         elif parsed_url.path == '/api/status':
-            self._json_response({"status": "ok"})
+            self._json_response({"status": "ok", "version": "2.0"})
         else:
             super().do_GET()
+
+    def end_headers(self):
+        # Always inject CORS headers on every response
+        self._send_cors_headers()
+        super().end_headers()
 
     def _json_response(self, data):
         body = json.dumps(data).encode('utf-8')
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
-        self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
         self.wfile.write(body)
 

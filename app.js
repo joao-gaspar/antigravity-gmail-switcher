@@ -433,17 +433,16 @@ function updateTimers() {
 }
 
 function fetchLive() {
-    // Dynamic endpoint: If hosted on Vercel, connect to local machine's server for live sync
-    const liveEndpoint = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-        ? '/api/live'
-        : 'http://localhost:8000/api/live';
+    // When served from Vercel (https://), connect to the local server (http://localhost:8000)
+    // Chrome/Edge allow https → http://localhost as a special case (localhost is considered secure).
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const liveEndpoint = isLocal ? '/api/live' : 'http://localhost:8000/api/live';
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
 
     fetch(liveEndpoint, { signal: controller.signal })
         .then(res => { clearTimeout(timeoutId); return res.json(); })
-        .then(res => res.json())
         .then(data => {
             const agentEmail = data.agent && data.agent.email;
             const agentName = data.agent && data.agent.name;
