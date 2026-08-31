@@ -426,13 +426,13 @@ function sortAccountsSmart(accountsList) {
         if (!aBlocked && !bBlocked) {
             const diff = consumed(a) - consumed(b);
             if (diff !== 0) return diff;
-            return a.name.localeCompare(b.name);
+            return (a.name || a.email || '').localeCompare(b.name || b.email || '');
         }
 
         // 3b. Both blocked → earliest reset first (soonest back online)
         const diff = resetTs(a) - resetTs(b);
         if (diff !== 0) return diff;
-        return a.name.localeCompare(b.name);
+        return (a.name || a.email || '').localeCompare(b.name || b.email || '');
     });
 }
 
@@ -474,9 +474,9 @@ function renderAccounts() {
         const selMachine = state.machines.find(m => m.machine_id === state.selectedMachineId);
         if (selMachine && selMachine.accounts && selMachine.accounts.length > 0) {
             targetAccountPool = selMachine.accounts.map(ma => ({
-                id: 'acc-' + ma.email.replace(/[@.]/g, '-'),
-                name: ma.name || ma.email.split('@')[0],
-                email: ma.email,
+                id: 'acc-' + (ma.email || 'unknown').replace(/[@.]/g, '-'),
+                name: ma.name || (ma.email ? ma.email.split('@')[0] : 'Conta'),
+                email: ma.email || '',
                 category: ma.category || 'work',
                 avatarUrl: ma.avatar_url || '',
                 theme: ma.theme || 'gradient-blue',
@@ -487,9 +487,17 @@ function renderAccounts() {
         }
     }
 
+    // Safety fallback: if target pool is empty, use default base accounts
+    if (!targetAccountPool || targetAccountPool.length === 0) {
+        targetAccountPool = state.accounts;
+    }
+
     const filtered = targetAccountPool.filter(acc => {
+        if (!acc || !acc.email) return false;
+        const accName  = (acc.name || acc.email || '').toLowerCase();
+        const accEmail = (acc.email || '').toLowerCase();
         const matchesCategory = state.currentFilter === 'all' || acc.category === state.currentFilter;
-        const matchesSearch = acc.name.toLowerCase().includes(state.searchQuery) || acc.email.toLowerCase().includes(state.searchQuery);
+        const matchesSearch   = accName.includes(state.searchQuery) || accEmail.includes(state.searchQuery);
         return matchesCategory && matchesSearch;
     });
 
