@@ -1115,6 +1115,19 @@ function checkAuth() {
     if (emailEl && !emailEl.value) emailEl.value = 'joaogaspar@gmail.com';
     if (passEl  && !passEl.value) passEl.value  = '2025@Switcher';
 
+    const btnTogglePass = document.getElementById('btn-toggle-password');
+    const passInput = document.getElementById('login-password');
+    const passIcon = document.getElementById('toggle-password-icon');
+    if (btnTogglePass && passInput && passIcon && !btnTogglePass._bound) {
+        btnTogglePass._bound = true;
+        btnTogglePass.addEventListener('click', () => {
+            const isPass = passInput.type === 'password';
+            passInput.type = isPass ? 'text' : 'password';
+            passIcon.className = isPass ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
+            passIcon.style.color = isPass ? '#a78bfa' : '#9ca3af';
+        });
+    }
+
     const form = document.getElementById('login-form');
     if (form && !form._authBound) {
         form._authBound = true;

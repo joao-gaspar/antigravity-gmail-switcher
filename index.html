@@ -327,7 +327,12 @@
                 </div>
                 <div style="display:flex; flex-direction:column; text-align:left; gap:4px;">
                     <label style="color:#9ca3af; font-size:0.65rem; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Senha</label>
-                    <input type="password" id="login-password" required placeholder="••••••••" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px 12px; color:#fff; font-size:0.8rem; outline:none; transition:border 0.3s;" onfocus="this.style.border='1px solid #a78bfa'" onblur="this.style.border='1px solid rgba(255,255,255,0.08)'">
+                    <div style="position:relative; display:flex; align-items:center;">
+                        <input type="password" id="login-password" required placeholder="••••••••" style="width:100%; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px 36px 10px 12px; color:#fff; font-size:0.8rem; outline:none; transition:border 0.3s; box-sizing:border-box;" onfocus="this.style.border='1px solid #a78bfa'" onblur="this.style.border='1px solid rgba(255,255,255,0.08)'">
+                        <button type="button" id="btn-toggle-password" style="position:absolute; right:8px; background:none; border:none; color:#9ca3af; font-size:0.85rem; cursor:pointer; padding:4px; outline:none;" title="Mostrar/Ocultar Senha">
+                            <i class="fa-solid fa-eye" id="toggle-password-icon"></i>
+                        </button>
+                    </div>
                 </div>
                 
                 <div id="login-error" style="color:#f87171; font-size:0.7rem; font-weight:600; display:none; margin-top:4px;">
