@@ -977,7 +977,7 @@ function closeNotesDrawer() {
 }
 
 function checkAuth() {
-    const isLogged = sessionStorage.getItem('antigravity_authenticated');
+    const isLogged = localStorage.getItem('antigravity_authenticated');
     const overlay = document.getElementById('login-overlay');
     if (isLogged === 'true') {
         if (overlay) overlay.style.display = 'none';
@@ -993,7 +993,7 @@ function checkAuth() {
                 const errDiv = document.getElementById('login-error');
                 
                 if (email === 'joaogaspar@gmail.com' && pass === '2025@Switcher') {
-                    sessionStorage.setItem('antigravity_authenticated', 'true');
+                    localStorage.setItem('antigravity_authenticated', 'true');
                     if (overlay) overlay.style.display = 'none';
                     if (errDiv) errDiv.style.display = 'none';
                     showToast('Acesso concedido!');
