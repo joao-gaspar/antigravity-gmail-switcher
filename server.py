@@ -398,7 +398,12 @@ def build_result(user_status, port, pid, now_iso):
                                         is_active=(acc.get('email') == agent_email),
                                         carousel_pos=i,
                                         status=acc.get('status','available'),
-                                        reset_at=acc.get('reset_at'))
+                                        reset_at=acc.get('reset_at'),
+                                        name=acc.get('name'),
+                                        category=acc.get('category'),
+                                        avatar_url=acc.get('avatarUrl'),
+                                        theme=acc.get('theme'),
+                                        notes=acc.get('notes'))
     except Exception:
         pass
     # Compute and persist suggestion

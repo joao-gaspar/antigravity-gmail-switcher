@@ -465,7 +465,29 @@ function formatResetRemaining(resetAtStr) {
 function renderAccounts() {
     elements.accountsGrid.innerHTML = '';
 
-    const filtered = state.accounts.filter(acc => {
+    const isLocalMachineSelected = !state.selectedMachineId || 
+        (state.currentMachine && state.selectedMachineId === state.currentMachine.machine_id);
+
+    let targetAccountPool = state.accounts;
+
+    if (!isLocalMachineSelected && state.machines && state.machines.length > 0) {
+        const selMachine = state.machines.find(m => m.machine_id === state.selectedMachineId);
+        if (selMachine && selMachine.accounts && selMachine.accounts.length > 0) {
+            targetAccountPool = selMachine.accounts.map(ma => ({
+                id: 'acc-' + ma.email.replace(/[@.]/g, '-'),
+                name: ma.name || ma.email.split('@')[0],
+                email: ma.email,
+                category: ma.category || 'work',
+                avatarUrl: ma.avatar_url || '',
+                theme: ma.theme || 'gradient-blue',
+                notes: ma.notes || '',
+                status: ma.status || 'available',
+                reset_at: ma.reset_at
+            }));
+        }
+    }
+
+    const filtered = targetAccountPool.filter(acc => {
         const matchesCategory = state.currentFilter === 'all' || acc.category === state.currentFilter;
         const matchesSearch = acc.name.toLowerCase().includes(state.searchQuery) || acc.email.toLowerCase().includes(state.searchQuery);
         return matchesCategory && matchesSearch;

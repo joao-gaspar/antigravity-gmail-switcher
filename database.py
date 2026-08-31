@@ -59,6 +59,11 @@ def init_db():
         CREATE TABLE IF NOT EXISTS machine_accounts (
             machine_id    TEXT,
             email         TEXT,
+            name          TEXT,
+            category      TEXT,
+            avatar_url    TEXT,
+            theme         TEXT,
+            notes         TEXT,
             is_active     INTEGER DEFAULT 0,
             carousel_pos  INTEGER DEFAULT 999,
             status        TEXT DEFAULT "available",
@@ -106,20 +111,53 @@ def list_machines():
     con.row_factory = sqlite3.Row
     cur = con.cursor()
     cur.execute("SELECT * FROM machines ORDER BY last_seen DESC")
+    machines = [dict(r) for r in cur.fetchall()]
+    
+    # Attach per-machine accounts
+    for m in machines:
+        cur.execute("""
+            SELECT * FROM machine_accounts
+            WHERE machine_id = ?
+            ORDER BY carousel_pos ASC
+        """, (m['machine_id'],))
+        m['accounts'] = [dict(a) for a in cur.fetchall()]
+    con.close()
+    return machines
+
+def get_all_machine_accounts():
+    con = sqlite3.connect(DB_PATH)
+    con.row_factory = sqlite3.Row
+    cur = con.cursor()
+    cur.execute("SELECT * FROM machine_accounts ORDER BY machine_id, carousel_pos ASC")
     rows = [dict(r) for r in cur.fetchall()]
     con.close()
     return rows
 
-def upsert_account(machine_id, email, is_active, carousel_pos=999, status="available", reset_at=None):
+def upsert_account(machine_id, email, is_active, carousel_pos=999, status="available", reset_at=None, name=None, category=None, avatar_url=None, theme=None, notes=None):
     con = sqlite3.connect(DB_PATH)
     cur = con.cursor()
+    
+    # Safely migration check for missing columns if DB exists
+    for col in ['name', 'category', 'avatar_url', 'theme', 'notes']:
+        try:
+            cur.execute(f"ALTER TABLE machine_accounts ADD COLUMN {col} TEXT")
+        except Exception:
+            pass
+
     cur.execute("""
-        INSERT INTO machine_accounts (machine_id, email, is_active, carousel_pos, status, reset_at)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO machine_accounts (machine_id, email, name, category, avatar_url, theme, notes, is_active, carousel_pos, status, reset_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(machine_id, email) DO UPDATE SET
-            is_active=excluded.is_active, carousel_pos=excluded.carousel_pos,
-            status=excluded.status, reset_at=excluded.reset_at
-    """, (machine_id, email, 1 if is_active else 0, carousel_pos, status, reset_at))
+            name=COALESCE(excluded.name, machine_accounts.name),
+            category=COALESCE(excluded.category, machine_accounts.category),
+            avatar_url=COALESCE(excluded.avatar_url, machine_accounts.avatar_url),
+            theme=COALESCE(excluded.theme, machine_accounts.theme),
+            notes=COALESCE(excluded.notes, machine_accounts.notes),
+            is_active=excluded.is_active,
+            carousel_pos=excluded.carousel_pos,
+            status=excluded.status,
+            reset_at=excluded.reset_at
+    """, (machine_id, email, name, category, avatar_url, theme, notes, 1 if is_active else 0, carousel_pos, status, reset_at))
     con.commit()
     con.close()
 
