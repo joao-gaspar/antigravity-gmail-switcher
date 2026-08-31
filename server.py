@@ -41,7 +41,7 @@ def probe_language_server():
         startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         startupinfo.wShowWindow = 0  # SW_HIDE
 
-    ps_cmd = "Get-CimInstance Win32_Process -Filter \"name='language_server_windows_x64.exe'\" | Select-Object ProcessId, CommandLine | ConvertTo-Json -Compress"
+    ps_cmd = "Get-CimInstance Win32_Process -Filter \"name LIKE 'language_server%'\" | Select-Object ProcessId, CommandLine | ConvertTo-Json -Compress"
     try:
         out = subprocess.check_output(
             ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_cmd],
@@ -72,7 +72,7 @@ def probe_language_server():
         pid = p.get('ProcessId')
         if '--enable_lsp' in cl:
             continue # Agent language server does not have --enable_lsp
-        m_csrf = re.search(r'--csrf_token\s+([\w-]+)', cl)
+        m_csrf = re.search(r'--csrf_token[=\s]+([\w-]+)', cl)
         if not m_csrf:
             continue
         csrf = m_csrf.group(1)

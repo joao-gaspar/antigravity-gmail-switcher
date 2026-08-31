@@ -831,8 +831,8 @@ function fetchLive() {
             }
 
             // Fetch other machines and snapshots for multi-desktop selector
-            const machinesUrl = isLocal ? '/api/machines' : 'http://localhost:8000/api/machines';
-            const snapshotsUrl = isLocal ? '/api/snapshots' : 'http://localhost:8000/api/snapshots';
+            const machinesUrl  = isLocal ? '/api/machines'  : 'http://127.0.0.1:8000/api/machines';
+            const snapshotsUrl = isLocal ? '/api/snapshots' : 'http://127.0.0.1:8000/api/snapshots';
 
             Promise.all([
                 fetch(machinesUrl).then(r => r.json()),
