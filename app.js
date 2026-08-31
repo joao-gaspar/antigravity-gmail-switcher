@@ -885,7 +885,38 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
         </select>
     `;
 
+    const grid = document.getElementById('accounts-grid');
+    let lockOverlay = document.getElementById('offline-lock-overlay');
+
     if (isOffline) {
+        if (grid) {
+            grid.style.filter = 'grayscale(0.85) opacity(0.38)';
+            grid.style.pointerEvents = 'none';
+            grid.style.userSelect = 'none';
+            grid.style.transition = 'filter 0.4s ease, opacity 0.4s ease';
+        }
+
+        if (!lockOverlay) {
+            lockOverlay = document.createElement('div');
+            lockOverlay.id = 'offline-lock-overlay';
+            lockOverlay.style.cssText = 'margin:10px 0 14px 0; padding:16px; background:rgba(239,68,68,0.08); border:1px dashed rgba(239,68,68,0.4); border-radius:12px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:8px; box-shadow:0 8px 24px rgba(0,0,0,0.3); backdrop-filter:blur(4px);';
+            const section = document.getElementById('view-accounts');
+            if (section && grid) section.insertBefore(lockOverlay, grid);
+        }
+        lockOverlay.style.display = 'flex';
+        lockOverlay.innerHTML = `
+            <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:1.2rem; color:#f87171;"><i class="fa-solid fa-plug-circle-xmark"></i></span>
+                <span style="font-size:0.82rem; font-weight:700; color:#f87171;">Servidor Local Offline neste Computador</span>
+            </div>
+            <p style="font-size:0.68rem; color:#9ca3af; max-width:380px; margin:0; line-height:1.4;">
+                As contas abaixo estão <strong style="color:#ef4444;">esmaecidas e travadas</strong> porque o assistente local do AGS não está rodando nesta máquina.
+            </p>
+            <button onclick="openSetupModal()" style="background:linear-gradient(135deg, #00f2fe 0%, #4facfe 100%); border:none; color:#0f172a; font-size:0.72rem; padding:7px 16px; border-radius:8px; font-weight:800; cursor:pointer; display:flex; align-items:center; gap:6px; box-shadow:0 0 15px rgba(0,242,254,0.4); margin-top:4px; outline:none;">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> ✨ Ativar Assistente do AGS neste PC
+            </button>
+        `;
+
         banner.style.background = 'rgba(239, 68, 68, 0.1)';
         banner.innerHTML = `
             <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:4px;">
@@ -908,6 +939,17 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
             });
         }
         return;
+    }
+
+    // Restore online state: remove dimming & hide lock overlay
+    if (grid) {
+        grid.style.filter = 'none';
+        grid.style.opacity = '1';
+        grid.style.pointerEvents = 'auto';
+        grid.style.userSelect = 'auto';
+    }
+    if (lockOverlay) {
+        lockOverlay.style.display = 'none';
     }
 
     const ts = lastCheck ? new Date(lastCheck).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : '--:--';
