@@ -609,13 +609,13 @@ function renderAccounts() {
             return n > 1 ? n / 100 : Math.max(0, Math.min(1, n));
         };
 
-        let qG = null, qC = null, qP = null;
+        const isLiveActiveAcc = selectedActiveEmail && acc.email && acc.email.toLowerCase() === selectedActiveEmail.toLowerCase();
 
         if (isBlocked) {
             qG = 0.0;
             qC = 0.0;
             qP = 0.0;
-        } else if (isActive && isLocalMachineSelected && state.liveQuota) {
+        } else if (isLiveActiveAcc && state.liveQuota) {
             qG = getFrac(state.liveQuota.gemini);
             qC = getFrac(state.liveQuota.claude);
             qP = getFrac(state.liveQuota.gpt);
