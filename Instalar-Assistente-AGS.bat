@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-set AGS_VER=v2.5.1
+set AGS_VER=v2.5.2
 title Assistente do AGS %AGS_VER% - Instalador Automatico
 color 0A
 cls
@@ -26,7 +26,7 @@ set LOG_FILE=%AGS_LOCAL%\install.log
 echo $OutputEncoding = [System.Text.Encoding]::UTF8
 echo [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 echo $ErrorActionPreference = 'Continue'
-echo $AGS_VERSION = "2.5.1"
+echo $AGS_VERSION = "2.5.2"
 echo Write-Host "`n[AGS] INICIANDO SETUP DO AGS v$AGS_VERSION" -ForegroundColor Cyan
 echo.
 echo $destDir = "$env:USERPROFILE\.gemini\antigravity-ide\scratch\gmail-switcher"
@@ -61,19 +61,14 @@ echo Write-Host "[INFO] Parando processos anteriores..." -ForegroundColor Yellow
 echo Get-Process python*, wscript -ErrorAction SilentlyContinue ^| Stop-Process -Force -ErrorAction SilentlyContinue
 echo Start-Sleep -Milliseconds 500
 echo.
-echo Write-Host "[INFO] Configurando inicializacao automatica..." -ForegroundColor Yellow
-echo $scheduledTaskOk = $false
+echo Write-Host "[INFO] Configurando inicializacao automatica na pasta Startup..." -ForegroundColor Yellow
 echo try {
-echo     $action = New-ScheduledTaskAction -Execute "wscript.exe" -Argument "`"$vbsPath`""
-echo     $trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
-echo     $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Hours 0^) -StartWhenAvailable -RunOnlyIfNetworkAvailable:$false
-echo     $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive
-echo     Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force ^| Out-Null
-echo     $scheduledTaskOk = $true
-echo     Write-Host "[INFO] Agendador configurado." -ForegroundColor Yellow
-echo } catch { Write-Host "[INFO] Usando pasta Startup (sem permissao de Admin)" -ForegroundColor Yellow }
-echo.
-echo try { $sf = [Environment]::GetFolderPath("Startup"^); if($sf -and (Test-Path $sf^)^){ Copy-Item "$vbsPath" "$sf\start-server.vbs" -Force -EA SilentlyContinue; Write-Host "[INFO] Adicionado ao Startup." -ForegroundColor Yellow } } catch {}
+echo     $sf = [Environment]::GetFolderPath("Startup"^)
+echo     if ($sf -and (Test-Path $sf^)^) {
+echo         Copy-Item "$vbsPath" "$sf\start-server.vbs" -Force -ErrorAction SilentlyContinue
+echo         Write-Host "[OK] Adicionado a inicializacao do Windows." -ForegroundColor Green
+echo     }
+echo } catch {}
 echo.
 echo Write-Host "[INFO] Iniciando watchdog VBS..." -ForegroundColor Cyan
 echo Start-Process -FilePath "wscript.exe" -ArgumentList "`"$vbsPath`"" -WindowStyle Hidden
