@@ -736,13 +736,13 @@ function fetchSingleEndpoint(url) {
 
 function fetchLive() {
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const ports = [8999, 8998, 8997, 8996, 8995, 8000];
+    const ports = [8000, 8999, 8998, 8997, 8996, 8995];
     
     let fetchPromise;
     if (isLocal) {
         fetchPromise = fetchSingleEndpoint('/api/live');
     } else {
-        // Try candidate ports dynamically: 8999 -> 8998 -> 8997 -> 8996 -> 8995 -> 8000
+        // Try candidate ports dynamically: 8000 -> 8999 -> 8998 -> 8997 -> 8996 -> 8995
         let p = Promise.reject();
         ports.forEach(port => {
             p = p.catch(() => fetchSingleEndpoint(`http://127.0.0.1:${port}/api/live`));
