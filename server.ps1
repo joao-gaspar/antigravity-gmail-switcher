@@ -111,9 +111,42 @@ while ($listener.IsListening) {
 
         if ($path -eq "/api/status" -or $path -eq "/api/live") {
             $statusObj = Get-LanguageServerStatus
+
+            $agentEmail = $null
+            $agentName = $null
+            $modelQuotas = @{}
+
+            if ($statusObj -and $statusObj.userStatus) {
+                $us = $statusObj.userStatus
+                if ($us.user -and $us.user.email) {
+                    $agentEmail = $us.user.email
+                    $agentName = $us.user.name
+                } elseif ($us.email) {
+                    $agentEmail = $us.email
+                }
+
+                if ($us.modelQuotas) {
+                    foreach ($mq in $us.modelQuotas) {
+                        $lbl = if ($mq.label) { $mq.label } else { $mq.modelId }
+                        if ($lbl) {
+                            $rem = 1.0
+                            if ($mq.quotaInfo -and $mq.quotaInfo.resetTime) {
+                                $rem = 0.0
+                            }
+                            $modelQuotas[$lbl] = @{
+                                remaining = $rem
+                                resetTime = if ($mq.quotaInfo) { $mq.quotaInfo.resetTime } else { $null }
+                            }
+                        }
+                    }
+                }
+            }
+
             $resMap = @{
                 status = "ok"
                 port = $activePort
+                agent = if ($agentEmail) { @{ email = $agentEmail; name = $agentName } } else { $null }
+                modelQuotas = $modelQuotas
                 live = if ($statusObj) { $statusObj.userStatus } else { $null }
                 machine = @{
                     hostname = $env:COMPUTERNAME
@@ -121,7 +154,8 @@ while ($listener.IsListening) {
                     machine_id = "mac-" + $env:COMPUTERNAME.ToLower()
                 }
             }
-            $json = $resMap | ConvertTo-Json -Depth 5
+
+            $json = $resMap | ConvertTo-Json -Depth 6
             $buffer = [System.Text.Encoding]::UTF8.GetBytes($json)
             $response.ContentType = "application/json; charset=utf-8"
         } else {

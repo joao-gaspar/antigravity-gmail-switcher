@@ -783,8 +783,11 @@ function fetchLive() {
 
     fetchPromise
         .then(data => {
-            const agentEmail = data.agent && data.agent.email;
-            const agentName = data.agent && data.agent.name;
+            const agentEmail = (data.agent && data.agent.email) || 
+                               (data.live && data.live.user && data.live.user.email) || 
+                               (data.live && data.live.email) || null;
+            const agentName = (data.agent && data.agent.name) || 
+                              (data.live && data.live.user && data.live.user.name) || null;
             const modelQuotas = data.modelQuotas || {};
             const suggestEmail = data.suggestEmail;
             const lastCheck = data.lastCheck;
