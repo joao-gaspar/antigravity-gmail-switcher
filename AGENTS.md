@@ -3,8 +3,10 @@
 NÃO VOU FAZER INFERÊNCIAS SOBRE AQUILO QUE NÃO É DO MEU ESCOPO.
 
 ## Regras Globais do Agente:
-1. **Sem Inferências Indevidas**: Não supor nomes de computadores, usuários, pastas ou projetos que estejam fora do escopo direto da tarefa.
-2. **Manutenção do Foco**: Manter o trabalho estritamente restrito às funcionalidades solicitadas do switcher de contas, APIs e interface.
+1. **Não minta, não invente**: Nunca supor ou prometer comportamentos de sistema, antivírus ou navegadores sem testes empíricos reais.
+2. **Sem frases triunfistas ou exclamações prematuras**: Não usar frases com exclamações afirmando que algo vai funcionar antes de realizar os testes empíricos e ter confirmação real.
+3. **Sem Inferências Indevidas**: Não supor nomes de computadores, usuários, pastas ou projetos fora do escopo direto.
+4. **Manutenção do Foco**: Manter o trabalho estritamente restrito às funcionalidades solicitadas do switcher de contas, APIs e interface.
 
 ## Regra de Ordenação de Contas (`sortAccountsSmart`):
 A ordenação das contas no grid DEVE sempre seguir esta prioridade, nesta ordem:
