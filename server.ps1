@@ -130,8 +130,17 @@ while ($listener.IsListening) {
                     $agentName = [string]$us.user.name
                 }
 
+                $configs = @()
                 if ($us.cascadeModelConfigData -and $us.cascadeModelConfigData.clientModelConfigs) {
-                    foreach ($mq in $us.cascadeModelConfigData.clientModelConfigs) {
+                    $configs = $us.cascadeModelConfigData.clientModelConfigs
+                } elseif ($us.clientModelConfigs) {
+                    $configs = $us.clientModelConfigs
+                } elseif ($us.modelConfigs) {
+                    $configs = $us.modelConfigs
+                }
+
+                if ($configs) {
+                    foreach ($mq in $configs) {
                         $lbl = if ($mq.label) { $mq.label } else { $mq.modelId }
                         if ($lbl) {
                             $rem = 1.0

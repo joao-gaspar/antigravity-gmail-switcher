@@ -562,21 +562,18 @@ function renderAccounts() {
 
     // Selected machine active email for UI badges
     let selectedActiveEmail = null;
-    let selectedSnap = null;
+    const selectedMachineObj = state.machines && state.machines.find(m => m.machine_id === state.selectedMachineId);
 
-    if (isLocalMachineSelected) {
-        selectedActiveEmail = state.accounts.find(a => a.id === state.activeAccountId)?.email;
+    if (selectedMachineObj && selectedMachineObj.active_email) {
+        selectedActiveEmail = selectedMachineObj.active_email;
+    } else if (state.currentMachine && state.currentMachine.active_email) {
+        selectedActiveEmail = state.currentMachine.active_email;
     } else {
-        if (state.snapshots && state.selectedMachineId) {
-            selectedSnap = state.snapshots.find(s => s.machine_id === state.selectedMachineId);
-            if (selectedSnap) {
-                selectedActiveEmail = selectedSnap.email;
-            }
-        }
+        selectedActiveEmail = state.accounts.find(a => a.id === state.activeAccountId)?.email;
     }
 
     sorted.forEach((acc) => {
-        const isActive = acc.email === selectedActiveEmail;
+        const isActive = selectedActiveEmail && acc.email && acc.email.toLowerCase() === selectedActiveEmail.toLowerCase();
         const isBlocked = acc.status === 'exhausted' || acc.status === 'rate_limited';
         const cardTheme = isActive ? 'gradient-purple' : 'gradient-blue';
         const themeConfig = themeGradients[cardTheme] || themeGradients['gradient-blue'];
@@ -602,23 +599,51 @@ function renderAccounts() {
         const avatarInitials = emailPrefix.slice(0, 2).toUpperCase();
         const avatarHtml = `<div class="account-avatar" style="width: 28px; height: 28px; font-size: 0.8rem;">${avatarInitials}</div>`;
 
-        // Live Quota Bars: pull either from local live state OR from database snapshots for the selected machine
+        // Live Quota Bars: pull either from local live state OR from selected machine model_quotas
         const getFrac = val => {
             if (val === undefined || val === null || isNaN(val)) return null;
             const n = Number(val);
             return n > 1 ? n / 100 : Math.max(0, Math.min(1, n));
         };
 
-        const isLiveActiveAcc = selectedActiveEmail && acc.email && acc.email.toLowerCase() === selectedActiveEmail.toLowerCase();
+        let qG = null, qC = null, qP = null;
 
         if (isBlocked) {
             qG = 0.0;
             qC = 0.0;
             qP = 0.0;
-        } else if (isLiveActiveAcc && state.liveQuota) {
-            qG = getFrac(state.liveQuota.gemini);
-            qC = getFrac(state.liveQuota.claude);
-            qP = getFrac(state.liveQuota.gpt);
+        } else if (isActive) {
+            if (state.liveQuota && (state.liveQuota.gemini !== null || state.liveQuota.claude !== null)) {
+                qG = getFrac(state.liveQuota.gemini);
+                qC = getFrac(state.liveQuota.claude);
+                qP = getFrac(state.liveQuota.gpt);
+            } else {
+                const quotasSource = (selectedMachineObj && selectedMachineObj.model_quotas) || 
+                                     (state.currentMachine && state.currentMachine.model_quotas) || 
+                                     state.liveModelQuotas;
+                if (quotasSource && typeof quotasSource === 'object') {
+                    let geminiMax = null, claudeMin = null, gptMin = null;
+                    let hasG = false, hasC = false, hasP = false;
+                    for (const [lbl, info] of Object.entries(quotasSource)) {
+                        const rem = typeof info === 'object' ? info.remaining : (typeof info === 'number' ? info : null);
+                        if (rem !== null && rem !== undefined) {
+                            if (/gemini/i.test(lbl)) {
+                                geminiMax = hasG ? Math.max(geminiMax, rem) : rem;
+                                hasG = true;
+                            } else if (/claude/i.test(lbl)) {
+                                claudeMin = hasC ? Math.min(claudeMin, rem) : rem;
+                                hasC = true;
+                            } else if (/gpt|openai|oss/i.test(lbl)) {
+                                gptMin = hasP ? Math.min(gptMin, rem) : rem;
+                                hasP = true;
+                            }
+                        }
+                    }
+                    qG = getFrac(geminiMax);
+                    qC = getFrac(claudeMin);
+                    qP = getFrac(gptMin);
+                }
+            }
         } else {
             const accSnap = state.snapshots && state.snapshots.find(s => 
                 s.email.toLowerCase() === acc.email.toLowerCase() && 
@@ -804,306 +829,188 @@ function fetchSingleEndpoint(url) {
 }
 
 function fetchLive() {
-    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const ports = [8000, 8999, 8998, 8997, 8996, 8995];
-    
-    let fetchPromise;
-    if (isLocal) {
-        fetchPromise = fetchSingleEndpoint('/api/live');
-    } else {
-        // Try candidate ports dynamically: 8000 -> 8999 -> 8998 -> 8997 -> 8996 -> 8995
-        let p = Promise.reject();
-        ports.forEach(port => {
-            p = p.catch(() => fetchSingleEndpoint(`http://127.0.0.1:${port}/api/live`));
-        });
-        fetchPromise = p;
+    const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const isHttps = window.location.protocol === 'https:';
+
+    if (isHttps) {
+        fetchCloudSync();
+        return;
     }
 
-    fetchPromise
-        .then(data => {
-            const agentEmail = (data.agent && data.agent.email) || 
-                               (data.live && data.live.user && data.live.user.email) || 
-                               (data.live && data.live.email) || null;
-            const agentName = (data.agent && data.agent.name) || 
-                              (data.live && data.live.user && data.live.user.name) || null;
-            const modelQuotas = data.modelQuotas || {};
-            const suggestEmail = data.suggestEmail;
-            const lastCheck = data.lastCheck;
+    fetchSingleEndpoint(isLocalHost ? '/api/live' : 'http://127.0.0.1:8000/api/live')
+        .then(data => processLiveData(data))
+        .catch(() => fetchCloudSync());
+}
 
-            // 1. Auto-include ANY active account even if never seen before
-            if (agentEmail) {
-                let detectedAcc = state.accounts.find(a => a.email.toLowerCase() === agentEmail.toLowerCase());
-                if (!detectedAcc) {
-                    const newId = 'acc-' + agentEmail.replace(/[@.]/g, '-');
-                    detectedAcc = {
-                        id: newId,
-                        name: agentName || agentEmail.split('@')[0],
-                        email: agentEmail,
-                        category: (agentEmail.includes('aluno')) ? 'clients' : 'work',
-                        avatarUrl: '',
-                        theme: 'gradient-purple',
-                        notes: '',
-                        status: 'available',
-                        tokenGemini: 0,
-                        tokenClaude: 0,
-                        tokenGpt: 0,
-                        reset_at: null,
-                        exhausted_models: []
-                    };
-                    state.accounts.unshift(detectedAcc);
-                    saveAccounts();
-                }
-                if (detectedAcc && detectedAcc.id !== state.activeAccountId) {
-                    state.activeAccountId = detectedAcc.id;
-                    safeSetStorage('antigravity_active_account_id', state.activeAccountId);
-                }
-            }
+function processLiveData(data) {
+    const agentEmail = (data.agent && data.agent.email) || 
+                       (data.live && data.live.user && data.live.user.email) || 
+                       (data.live && data.live.email) || null;
+    const agentName = (data.agent && data.agent.name) || 
+                      (data.live && data.live.user && data.live.user.name) || null;
+    const modelQuotas = data.modelQuotas || {};
+    const suggestEmail = data.suggestEmail;
+    const lastCheck = data.lastCheck;
 
-            let geminiMax = null, claudeMin = null, gptMin = null;
-            let hasGemini = false, hasClaude = false, hasGpt = false;
-
-            if (modelQuotas && typeof modelQuotas === 'object' && Object.keys(modelQuotas).length > 0) {
-                for (const [lbl, info] of Object.entries(modelQuotas)) {
-                    const rem = typeof info === 'object' ? info.remaining : (typeof info === 'number' ? info : null);
-                    if (rem !== null && rem !== undefined) {
-                        if (/gemini/i.test(lbl)) {
-                            geminiMax = hasGemini ? Math.max(geminiMax, rem) : rem;
-                            hasGemini = true;
-                        } else if (/claude/i.test(lbl)) {
-                            claudeMin = hasClaude ? Math.min(claudeMin, rem) : rem;
-                            hasClaude = true;
-                        } else if (/gpt|openai/i.test(lbl)) {
-                            gptMin = hasGpt ? Math.min(gptMin, rem) : rem;
-                            hasGpt = true;
-                        }
-                    }
-                }
-            }
-
-            state.liveQuota = {
-                gemini: hasGemini ? geminiMax : null,
-                claude: hasClaude ? claudeMin : null,
-                gpt:    hasGpt    ? gptMin    : null
+    if (agentEmail) {
+        let detectedAcc = state.accounts.find(a => a.email.toLowerCase() === agentEmail.toLowerCase());
+        if (!detectedAcc) {
+            const newId = 'acc-' + agentEmail.replace(/[@.]/g, '-');
+            detectedAcc = {
+                id: newId,
+                name: agentName || agentEmail.split('@')[0],
+                email: agentEmail,
+                category: (agentEmail.includes('aluno')) ? 'clients' : 'work',
+                avatarUrl: '',
+                theme: 'gradient-purple',
+                notes: '',
+                status: 'available',
+                tokenGemini: null,
+                tokenClaude: null,
+                tokenGpt: null,
+                reset_at: null,
+                exhausted_models: []
             };
-            state.liveModelQuotas = modelQuotas;
-            state.liveSuggestEmail = suggestEmail;
-            state.liveLastCheck = lastCheck;
-
-            // ── Write live quota back into the active account card ──────────
-            if (agentEmail && state.liveQuota) {
-                const liveAcc = state.accounts.find(a =>
-                    a.email && a.email.toLowerCase() === agentEmail.toLowerCase());
-                if (liveAcc) {
-                    liveAcc.tokenGemini = state.liveQuota.gemini;
-                    liveAcc.tokenClaude = state.liveQuota.claude;
-                    liveAcc.tokenGpt    = state.liveQuota.gpt;
-                    if (state.liveQuota.gemini === 0 && state.liveQuota.claude === 0 && state.liveQuota.gpt === 0) {
-                        liveAcc.status = 'exhausted';
-                    }
-                    saveAccounts();
-                }
-            }
-
-            // ── POST all accounts (with token data) to cloud /api/sync ─────
-            const machInfo = data.machine || {};
-            const syncPayload = {
-                machine_id:   machInfo.machine_id || 'unknown',
-                hostname:     machInfo.hostname   || '',
-                username:     machInfo.username   || '',
-                active_email: agentEmail,
-                suggest_email: suggestEmail,
-                last_seen:    new Date().toISOString(),
-                accounts: state.accounts.map(a => ({
-                    email:       a.email,
-                    tokenGemini: a.tokenGemini || 0,
-                    tokenClaude: a.tokenClaude || 0,
-                    tokenGpt:    a.tokenGpt    || 0,
-                    status:      a.status      || 'available',
-                    reset_at:    a.reset_at    || null
-                }))
-            };
-            fetch('/api/sync', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(syncPayload)
-            }).catch(() => {});
-
-    // Save active machine details
-    if (data.machine) {
-        state.currentMachine = data.machine;
-        if (data.machine.hostname) safeSetStorage('antigravity_last_hostname', data.machine.hostname);
-        if (data.machine.username) safeSetStorage('antigravity_last_username', data.machine.username);
-        if (!state.selectedMachineId) {
-            state.selectedMachineId = data.machine.machine_id;
+            state.accounts.unshift(detectedAcc);
+            saveAccounts();
+        }
+        if (detectedAcc && detectedAcc.id !== state.activeAccountId) {
+            state.activeAccountId = detectedAcc.id;
+            safeSetStorage('antigravity_active_account_id', state.activeAccountId);
         }
     }
 
-            if (data.pool && data.pool.length > 0) {
-                data.pool.forEach(poolAcc => {
-                    let local = state.accounts.find(a => a.email === poolAcc.email);
-                    const blocked = poolAcc.status === 'rate_limited';
-                    if (!local) {
-                        local = {
-                            id: 'acc-' + poolAcc.email.replace(/[@.]/g, '-'),
-                            name: poolAcc.label || poolAcc.email,
-                            email: poolAcc.email,
-                            category: (poolAcc.group === 'alunos' || poolAcc.email.includes('aluno')) ? 'clients' : 'work',
-                            avatarUrl: '',
-                            theme: poolAcc.email.includes('drive') ? 'gradient-blue' : (poolAcc.email.includes('tilab') ? 'gradient-purple' : 'gradient-emerald'),
-                            notes: '',
-                            status: blocked ? 'exhausted' : 'available',
-                            tokenGemini: 0,
-                            tokenClaude: 0,
-                            tokenGpt: 0,
-                            reset_at: poolAcc.reset_at || null,
-                            exhausted_models: poolAcc.exhausted_models || []
-                        };
-                        state.accounts.push(local);
-                    } else {
-                        local.status = blocked ? 'exhausted' : 'available';
-                        local.reset_at = poolAcc.reset_at || null;
-                        local.exhausted_models = poolAcc.exhausted_models || [];
-                        if (poolAcc.label && !local.name) local.name = poolAcc.label;
+    let geminiMax = null, claudeMin = null, gptMin = null;
+    let hasGemini = false, hasClaude = false, hasGpt = false;
+
+    if (modelQuotas && typeof modelQuotas === 'object' && Object.keys(modelQuotas).length > 0) {
+        for (const [lbl, info] of Object.entries(modelQuotas)) {
+            const rem = typeof info === 'object' ? info.remaining : (typeof info === 'number' ? info : null);
+            if (rem !== null && rem !== undefined) {
+                if (/gemini/i.test(lbl)) {
+                    geminiMax = hasGemini ? Math.max(geminiMax, rem) : rem;
+                    hasGemini = true;
+                } else if (/claude/i.test(lbl)) {
+                    claudeMin = hasClaude ? Math.min(claudeMin, rem) : rem;
+                    hasClaude = true;
+                } else if (/gpt|openai|oss/i.test(lbl)) {
+                    gptMin = hasGpt ? Math.min(gptMin, rem) : rem;
+                    hasGpt = true;
+                }
+            }
+        }
+    }
+
+    state.liveQuota = {
+        gemini: hasGemini ? geminiMax : null,
+        claude: hasClaude ? claudeMin : null,
+        gpt:    hasGpt    ? gptMin    : null
+    };
+    state.liveModelQuotas = modelQuotas;
+    state.liveSuggestEmail = suggestEmail;
+    state.liveLastCheck = lastCheck;
+
+    if (agentEmail && state.liveQuota) {
+        const liveAcc = state.accounts.find(a =>
+            a.email && a.email.toLowerCase() === agentEmail.toLowerCase());
+        if (liveAcc) {
+            liveAcc.tokenGemini = state.liveQuota.gemini;
+            liveAcc.tokenClaude = state.liveQuota.claude;
+            liveAcc.tokenGpt    = state.liveQuota.gpt;
+            liveAcc.lastMeasuredAt = new Date().toISOString();
+            if (state.liveQuota.gemini === 0 && state.liveQuota.claude === 0 && state.liveQuota.gpt === 0) {
+                liveAcc.status = 'exhausted';
+            }
+            saveAccounts();
+        }
+    }
+
+    renderAccounts();
+    updateLiveBanner(agentEmail, suggestEmail, lastCheck, false, data.suggestReason);
+}
+
+function fetchCloudSync() {
+    fetch('/api/sync')
+        .then(r => r.json())
+        .then(cloudData => {
+            if (cloudData && cloudData.machines && cloudData.machines.length > 0) {
+                state.machines = cloudData.machines;
+                
+                const selMachine = state.machines.find(m => m.machine_id === state.selectedMachineId) || state.machines[0];
+                if (selMachine) {
+                    const cloudActiveEmail = selMachine.active_email;
+                    const cloudModelQuotas = selMachine.model_quotas || {};
+
+                    let geminiMax = null, claudeMin = null, gptMin = null;
+                    let hasGemini = false, hasClaude = false, hasGpt = false;
+
+                    if (cloudModelQuotas && typeof cloudModelQuotas === 'object' && Object.keys(cloudModelQuotas).length > 0) {
+                        for (const [lbl, info] of Object.entries(cloudModelQuotas)) {
+                            const rem = typeof info === 'object' ? info.remaining : (typeof info === 'number' ? info : null);
+                            if (rem !== null && rem !== undefined) {
+                                if (/gemini/i.test(lbl)) {
+                                    geminiMax = hasGemini ? Math.max(geminiMax, rem) : rem;
+                                    hasGemini = true;
+                                } else if (/claude/i.test(lbl)) {
+                                    claudeMin = hasClaude ? Math.min(claudeMin, rem) : rem;
+                                    hasClaude = true;
+                                } else if (/gpt|openai|oss/i.test(lbl)) {
+                                    gptMin = hasGpt ? Math.min(gptMin, rem) : rem;
+                                    hasGpt = true;
+                                }
+                            }
+                        }
                     }
-                });
-                saveAccounts();
+
+                    state.liveQuota = {
+                        gemini: hasGemini ? geminiMax : null,
+                        claude: hasClaude ? claudeMin : null,
+                        gpt:    hasGpt    ? gptMin    : null
+                    };
+
+                    if (cloudActiveEmail) {
+                        let detectedAcc = state.accounts.find(a => a.email.toLowerCase() === cloudActiveEmail.toLowerCase());
+                        if (detectedAcc) {
+                            state.activeAccountId = detectedAcc.id;
+                            detectedAcc.tokenGemini = state.liveQuota.gemini;
+                            detectedAcc.tokenClaude = state.liveQuota.claude;
+                            detectedAcc.tokenGpt    = state.liveQuota.gpt;
+                            detectedAcc.lastMeasuredAt = new Date().toISOString();
+                            if (state.liveQuota.gemini === 0 && state.liveQuota.claude === 0 && state.liveQuota.gpt === 0) {
+                                detectedAcc.status = 'exhausted';
+                            }
+                            saveAccounts();
+                        }
+                    }
+                }
             }
 
-            // Fetch local & cloud synced machines using discovered active port
-            const activePort = data.activePort || 8999;
-            const machinesUrl  = isLocal ? '/api/machines'  : `http://127.0.0.1:${activePort}/api/machines`;
-            const snapshotsUrl = isLocal ? '/api/snapshots' : `http://127.0.0.1:${activePort}/api/snapshots`;
-
-            Promise.all([
-                fetch(machinesUrl).then(r => r.json()).catch(() => []),
-                fetch(snapshotsUrl).then(r => r.json()).catch(() => []),
-                fetch('/api/sync').then(r => r.json()).catch(() => ({ machines: [] }))
-            ])
-            .then(([localMachines, snapshots, cloudData]) => {
-                const combined = [...(localMachines || [])];
-                if (cloudData && cloudData.machines) {
-                    cloudData.machines.forEach(cm => {
-                        let match = combined.find(m => m.machine_id === cm.machine_id);
-                        if (!match) {
-                            combined.push(cm);
-                        } else {
-                            Object.assign(match, cm);
-                        }
-                    });
-                }
-
-                // ── Merge cloud token data into local accounts ────────────
-                if (cloudData && cloudData.accounts && cloudData.accounts.length > 0) {
-                    let tokensMerged = false;
-                    cloudData.accounts.forEach(ca => {
-                        if (!ca.email) return;
-                        // Skip updating the account that belongs to THIS machine's
-                        // active email — our local liveQuota is more accurate.
-                        if (agentEmail && ca.email.toLowerCase() === agentEmail.toLowerCase()) return;
-                        const local = state.accounts.find(a =>
-                            a.email && a.email.toLowerCase() === ca.email.toLowerCase());
-                        if (local) {
-                            if (ca.tokenGemini != null) local.tokenGemini = ca.tokenGemini;
-                            if (ca.tokenClaude != null) local.tokenClaude = ca.tokenClaude;
-                            if (ca.tokenGpt    != null) local.tokenGpt    = ca.tokenGpt;
-                            if (ca.status)              local.status      = ca.status;
-                            if (ca.reset_at !== undefined) local.reset_at  = ca.reset_at;
-                            tokensMerged = true;
-                        }
-                    });
-                    if (tokensMerged) saveAccounts();
-                }
-                state.machines = combined;
-                state.snapshots = snapshots;
-                renderAccounts();
-                updateLiveBanner(agentEmail, suggestEmail, lastCheck, false, data.suggestReason);
-            });
-        })
-        .catch(err => {
-            clearTimeout(timeoutId);
-            // Fetch cloud synced machines & accounts pushed natively by PowerShell server.ps1
-            fetch('/api/sync')
-                .then(r => r.json())
-                .then(cloudData => {
-                    if (cloudData && cloudData.machines && cloudData.machines.length > 0) {
-                        state.machines = cloudData.machines;
-                        
-                        // Select current machine or target machine from cloud
-                        const selMachine = state.machines.find(m => m.machine_id === state.selectedMachineId) || state.machines[0];
-                        if (selMachine) {
-                            const cloudActiveEmail = selMachine.active_email;
-                            const cloudModelQuotas = selMachine.model_quotas || {};
-
-                            let geminiMax = null, claudeMin = null, gptMin = null;
-                            let hasGemini = false, hasClaude = false, hasGpt = false;
-
-                            if (cloudModelQuotas && typeof cloudModelQuotas === 'object' && Object.keys(cloudModelQuotas).length > 0) {
-                                for (const [lbl, info] of Object.entries(cloudModelQuotas)) {
-                                    const rem = typeof info === 'object' ? info.remaining : (typeof info === 'number' ? info : null);
-                                    if (rem !== null && rem !== undefined) {
-                                        if (/gemini/i.test(lbl)) {
-                                            geminiMax = hasGemini ? Math.max(geminiMax, rem) : rem;
-                                            hasGemini = true;
-                                        } else if (/claude/i.test(lbl)) {
-                                            claudeMin = hasClaude ? Math.min(claudeMin, rem) : rem;
-                                            hasClaude = true;
-                                        } else if (/gpt|openai|oss/i.test(lbl)) {
-                                            gptMin = hasGpt ? Math.min(gptMin, rem) : rem;
-                                            hasGpt = true;
-                                        }
-                                    }
-                                }
-                            }
-
-                            state.liveQuota = {
-                                gemini: hasGemini ? geminiMax : null,
-                                claude: hasClaude ? claudeMin : null,
-                                gpt:    hasGpt    ? gptMin    : null
-                            };
-
-                            if (cloudActiveEmail) {
-                                let detectedAcc = state.accounts.find(a => a.email.toLowerCase() === cloudActiveEmail.toLowerCase());
-                                if (detectedAcc) {
-                                    state.activeAccountId = detectedAcc.id;
-                                    detectedAcc.tokenGemini = state.liveQuota.gemini;
-                                    detectedAcc.tokenClaude = state.liveQuota.claude;
-                                    detectedAcc.tokenGpt    = state.liveQuota.gpt;
-                                    detectedAcc.lastMeasuredAt = new Date().toISOString();
-                                    if (state.liveQuota.gemini === 0 && state.liveQuota.claude === 0 && state.liveQuota.gpt === 0) {
-                                        detectedAcc.status = 'exhausted';
-                                    }
-                                }
-                            }
-                        }
+            if (cloudData && cloudData.accounts && cloudData.accounts.length > 0) {
+                cloudData.accounts.forEach(ca => {
+                    if (!ca.email) return;
+                    const local = state.accounts.find(a => a.email && a.email.toLowerCase() === ca.email.toLowerCase());
+                    if (local) {
+                        if (ca.tokenGemini != null) local.tokenGemini = ca.tokenGemini;
+                        if (ca.tokenClaude != null) local.tokenClaude = ca.tokenClaude;
+                        if (ca.tokenGpt    != null) local.tokenGpt    = ca.tokenGpt;
+                        if (ca.status)              local.status      = ca.status;
+                        if (ca.reset_at !== undefined) local.reset_at  = ca.reset_at;
                     }
-
-                    if (cloudData && cloudData.accounts && cloudData.accounts.length > 0) {
-                        cloudData.accounts.forEach(ca => {
-                            if (!ca.email) return;
-                            const local = state.accounts.find(a => a.email && a.email.toLowerCase() === ca.email.toLowerCase());
-                            if (local) {
-                                if (ca.tokenGemini != null) local.tokenGemini = ca.tokenGemini;
-                                if (ca.tokenClaude != null) local.tokenClaude = ca.tokenClaude;
-                                if (ca.tokenGpt    != null) local.tokenGpt    = ca.tokenGpt;
-                                if (ca.status)              local.status      = ca.status;
-                                if (ca.reset_at !== undefined) local.reset_at  = ca.reset_at;
-                            }
-                        });
-                    }
-
-                    renderAccounts();
-                    const activeCloudMachine = state.machines.find(m => m.machine_id === state.selectedMachineId) || state.machines[0];
-                    updateLiveBanner(
-                        activeCloudMachine ? activeCloudMachine.active_email : null,
-                        activeCloudMachine ? activeCloudMachine.suggest_email : null,
-                        activeCloudMachine ? activeCloudMachine.last_seen : null,
-                        false,
-                        activeCloudMachine ? activeCloudMachine.suggest_reason : ''
-                    );
-                })
-                .catch(() => {
-                    updateLiveBanner(null, null, null, true);
                 });
+            }
+
+            renderAccounts();
+            const activeCloudMachine = state.machines.find(m => m.machine_id === state.selectedMachineId) || state.machines[0];
+            updateLiveBanner(
+                activeCloudMachine ? activeCloudMachine.active_email : null,
+                activeCloudMachine ? activeCloudMachine.suggest_email : null,
+                activeCloudMachine ? activeCloudMachine.last_seen : null,
+                false,
+                activeCloudMachine ? activeCloudMachine.suggest_reason : ''
+            );
+        })
+        .catch(() => {
+            updateLiveBanner(null, null, null, true);
         });
 }
 
