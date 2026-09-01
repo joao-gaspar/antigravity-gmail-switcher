@@ -649,7 +649,7 @@ function renderAccounts() {
         <div style="margin-top:4px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.06);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
                 <span style="font-size:0.54rem; color:#9ca3af; font-weight:600;">Modelo</span>
-                <span style="font-size:0.54rem; color:#9ca3af; font-weight:600;">Cota Restante</span>
+                <span style="font-size:0.54rem; color:#9ca3af; font-weight:600;">Consumo</span>
             </div>
             ${renderBar(qG, 'Gemini')}
             ${renderBar(qCG, 'Claude / GPT')}
