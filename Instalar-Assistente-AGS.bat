@@ -1,9 +1,37 @@
 @echo off
 setlocal enabledelayedexpansion
 chcp 65001 >nul
-set AGS_VER=v2.8.0
+set AGS_VER=v2.9.0
+set "SELF=%~f0"
 title Assistente do AGS %AGS_VER%
 color 0A
+cls
+echo.
+echo  ========================================================
+echo    [AGS] ASSISTENTE DO AGS %AGS_VER% - CONFIGURACAO
+echo  ========================================================
+echo.
+echo   Verificando atualizacoes...
+
+:: --- AUTO-UPDATE -----------------------------------------------------------
+set "TMP_UPD=%TEMP%\ags_upd_%RANDOM%.bat"
+curl.exe -s -L --max-time 10 -o "%TMP_UPD%" "https://raw.githubusercontent.com/joao-gaspar/antigravity-gmail-switcher/main/Instalar-Assistente-AGS.bat"
+if exist "%TMP_UPD%" (
+    set "REMOTE_VER="
+    for /f "tokens=3" %%v in ('findstr /i "^set AGS_VER=" "%TMP_UPD%"') do set "REMOTE_VER=%%v"
+    if defined REMOTE_VER (
+        if "!REMOTE_VER!" neq "%AGS_VER%" (
+            echo   Atualizando de %AGS_VER% para !REMOTE_VER!...
+            copy /y "%TMP_UPD%" "%SELF%" >nul 2>&1
+            del /f /q "%TMP_UPD%" >nul 2>&1
+            start "" "%SELF%"
+            exit /b
+        )
+    )
+    del /f /q "%TMP_UPD%" >nul 2>&1
+)
+:: --- FIM AUTO-UPDATE -------------------------------------------------------
+
 cls
 echo.
 echo  ========================================================
