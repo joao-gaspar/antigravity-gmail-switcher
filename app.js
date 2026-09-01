@@ -1032,28 +1032,38 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
         lockOverlay.style.display = 'none';
     }
 
-    const ts = lastCheck ? new Date(lastCheck).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}) : '--:--';
+    // Determine active account display (probe > local selection > fallback)
+    const activeAccObj = state.accounts.find(a => a.id === state.activeAccountId);
+    const displayActiveEmail = agentEmail || (activeAccObj ? activeAccObj.email : null);
 
-    const agentPart = agentEmail
-        ? `<span style="color:#a78bfa; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px;" title="${agentEmail}"><i class="fa-solid fa-robot" style="font-size:0.6rem;"></i> ${agentEmail}</span>`
-        : `<span style="color:#6b7280;">Nenhum agente ativo</span>`;
+    const agentPart = displayActiveEmail
+        ? `<span style="color:#a78bfa; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:200px;" title="${displayActiveEmail}"><i class="fa-solid fa-user-check" style="font-size:0.6rem;"></i> ${displayActiveEmail}</span>`
+        : `<span style="color:#6b7280;">Nenhuma selecionada</span>`;
+
+    // Determine next suggested account display (server suggest > next available local account)
+    let displaySuggestEmail = suggestEmail;
+    if (!displaySuggestEmail && state.accounts && state.accounts.length > 0) {
+        const nextAvail = state.accounts.find(a => (a.status === 'available' || !a.status) && a.id !== state.activeAccountId);
+        if (nextAvail) displaySuggestEmail = nextAvail.email;
+    }
 
     const sugTitle = suggestReason ? `title="${suggestReason}"` : '';
-    const suggestPart = suggestEmail
-        ? `<span style="color:#34d399; font-weight:600; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px;" onclick="openSuggestLogin('${suggestEmail}')" ${sugTitle} title="${suggestEmail}"><i class="fa-solid fa-forward-step"></i> ⭐ ${suggestEmail}</span>`
-        : `<span style="color:#4b5563; font-style:italic; font-size:0.58rem;">sem sugestão</span>`;
+    const suggestPart = displaySuggestEmail
+        ? `<span style="color:#34d399; font-weight:700; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:200px;" onclick="openSuggestLogin('${displaySuggestEmail}')" ${sugTitle} title="${displaySuggestEmail}"><i class="fa-solid fa-angles-right"></i> ⭐ ${displaySuggestEmail}</span>`
+        : `<span style="color:#6b7280; font-style:italic;">Sem alternativa</span>`;
 
     banner.innerHTML = `
         <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:5px;">
             ${selectorHtml}
-            <span style="color:#6b7280; font-size:0.58rem; white-space:nowrap;">⚡ ${ts}</span>
-            <span style="color:#10b981; font-size:0.56rem; font-weight:800; letter-spacing:0.05em; margin-left:auto;">LIVE DATABASE</span>
+            <span style="color:#10b981; font-size:0.6rem; font-weight:700; display:inline-flex; align-items:center; gap:4px; margin-left:auto;">
+                <span style="width:6px; height:6px; background:#10b981; border-radius:50%; display:inline-block; box-shadow:0 0 8px #10b981;"></span> Online
+            </span>
         </div>
-        <div style="display:flex; align-items:center; gap:12px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.05);">
-            <span style="color:#6b7280; font-size:0.56rem; white-space:nowrap; flex-shrink:0;">ATIVA</span>
+        <div style="display:flex; align-items:center; gap:10px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.05); font-size:0.65rem;">
+            <span style="color:#6b7280; font-size:0.56rem; font-weight:700; flex-shrink:0;">ATIVA</span>
             ${agentPart}
             <span style="color:#374151; font-size:0.7rem; flex-shrink:0;">→</span>
-            <span style="color:#6b7280; font-size:0.56rem; white-space:nowrap; flex-shrink:0;">PRÓXIMA</span>
+            <span style="color:#6b7280; font-size:0.56rem; font-weight:700; flex-shrink:0;">PRÓXIMA</span>
             ${suggestPart}
         </div>
     `;
@@ -1067,7 +1077,7 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
         });
     }
 
-    const agentAcc = agentEmail ? state.accounts.find(a => a.email === agentEmail) : null;
+    const agentAcc = displayActiveEmail ? state.accounts.find(a => a.email === displayActiveEmail) : null;
     if (agentAcc && (agentAcc.status === 'exhausted' || agentAcc.status === 'rate_limited')) {
         banner.style.background = 'rgba(239,68,68,0.10)';
     } else {
