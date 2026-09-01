@@ -595,7 +595,7 @@ function renderAccounts() {
                 const col = pct > 50 ? '#34d399' : pct > 15 ? '#f59e0b' : '#ef4444';
                 return `
                 <div style="display:flex; align-items:center; gap:4px; margin-bottom:2px;">
-                    <span style="font-size:0.58rem; color:${col}; width:44px; font-weight:600;">${label}</span>
+                    <span style="font-size:0.58rem; color:${col}; min-width:68px; font-weight:600;">${label}</span>
                     <div style="flex:1; height:4px; background:rgba(255,255,255,0.08); border-radius:2px; overflow:hidden;">
                         <div style="height:100%; width:${pct}%; background:${col}; border-radius:2px; transition:width 0.4s;"></div>
                     </div>
@@ -603,15 +603,11 @@ function renderAccounts() {
                 </div>`;
             };
 
+            const qCG = Math.max(qC, qP);
             quotaBarsHtml = `
             <div style="margin-top:4px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.06);">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
-                    <span style="font-size:0.54rem; color:#9ca3af; font-weight:600;"><i class="fa-solid fa-database" style="font-size:0.5rem;"></i> Quota no SQLite</span>
-                    <span style="font-size:0.5rem; color:#6b7280;">Histórico</span>
-                </div>
                 ${renderBar(qG, 'Gemini')}
-                ${renderBar(qC, 'Claude')}
-                ${renderBar(qP, 'GPT')}
+                ${renderBar(qCG, 'Claude / GPT')}
             </div>`;
         }
 
@@ -624,12 +620,10 @@ function renderAccounts() {
             <div class="card-header" style="margin-bottom:0; align-items:center; display:flex; justify-content:space-between;">
                 <div style="display:flex; align-items:center; gap:5px; overflow:hidden; flex:1; min-width:0;">
                     ${avatarHtml}
-                    <a href="${getChooserUrl(acc.email, 'gmail')}" target="_blank" class="launch-btn btn-gmail" title="Abrir Gmail" style="flex-shrink:0; width:20px; height:20px; padding:0; display:flex; align-items:center; justify-content:center; border-radius:4px; font-size:0.7rem;">
-                        <i class="fa-solid fa-envelope"></i>
-                    </a>
                     <span style="font-size:0.75rem; font-weight:500; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${acc.email}</span>
                 </div>
                 <div style="display:flex; gap:2px; align-items:center; flex-shrink:0; margin-left:4px;">
+                    <button class="btn-ctrl btn-switch" data-email="${acc.email}" title="Trocar para esta conta (logout + login)" style="width:18px; height:18px; font-size:0.7rem; color:#60a5fa;" ${isActive ? 'disabled style="width:18px; height:18px; font-size:0.7rem; color:#374151; cursor:not-allowed;"' : ''}><i class="fa-solid fa-arrow-right-arrow-left"></i></button>
                     <button class="btn-ctrl btn-activate" title="${isActive ? 'Conta ativa' : 'Marcar como ativa'}" data-id="${acc.id}" style="width:18px; height:18px; font-size:0.7rem; color:${isActive ? '#10b981' : 'var(--text-muted)'};"><i class="${isActive ? 'fa-solid fa-circle-check' : 'fa-regular fa-circle'}"></i></button>
                     <button class="btn-ctrl btn-edit"      data-id="${acc.id}" style="width:18px; height:18px; font-size:0.65rem;"><i class="fa-solid fa-pen"></i></button>
                     <button class="btn-ctrl btn-delete"    data-id="${acc.id}" style="width:18px; height:18px; font-size:0.65rem;"><i class="fa-solid fa-trash-can"></i></button>
@@ -648,6 +642,10 @@ function renderAccounts() {
             </div>
         `;
 
+        card.querySelector('.btn-switch').addEventListener('click', (e) => {
+            e.stopPropagation();
+            switchToAccount(e.currentTarget.dataset.email);
+        });
         card.querySelector('.btn-edit').addEventListener('click', (e) => { e.stopPropagation(); openModal(acc.id); });
         card.querySelector('.btn-delete').addEventListener('click', (e) => {
             e.stopPropagation();
@@ -671,6 +669,20 @@ function setActiveAccount(id) {
     renderAccounts();
     const acc = state.accounts.find(a => a.id === id);
     if (acc) showToast(`Conta ativa: ${acc.email}`);
+}
+
+// Navega o Simple Browser (janela do agente) para logout do Google
+// e depois para o AccountChooser com o email alvo pré-preenchido.
+// O usuário só precisa digitar a senha da nova conta.
+function switchToAccount(email) {
+    if (!email) return;
+    const continueAfterLogin = encodeURIComponent(
+        `https://accounts.google.com/AccountChooser?Email=${encodeURIComponent(email)}&continue=${encodeURIComponent(window.location.href)}`
+    );
+    const logoutAndLoginUrl = `https://accounts.google.com/Logout?continue=${continueAfterLogin}`;
+    showToast(`🔄 Trocando para ${email}...`);
+    // Navega a janela atual (Simple Browser = janela do agente) para fazer logout
+    window.location.href = logoutAndLoginUrl;
 }
 
 function toggleAccountStatus(id) {

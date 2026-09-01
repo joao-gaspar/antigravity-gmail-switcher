@@ -13,4 +13,8 @@ A ordenação das contas no grid DEVE sempre seguir esta prioridade, nesta ordem
 3. **Contas disponíveis com MAIS tokens restantes** — maior capacidade restante primeiro (descending)
 4. **Contas bloqueadas/esgotadas com MENOR prazo de retorno** — `reset_at` mais cedo primeiro (ascending)
 
-> Esta regra é PERMANENTE. Qualquer refatoração do `sortAccountsSmart` em `app.js` deve preservar esta lógica.
+## Regra de Registro do Tempo de Reset (`reset_at`):
+É OBRIGATÓRIO registrar e persistir o tempo de reset (`reset_at`) de tokens sempre que uma conta for marcada como `rate_limited` ou `exhausted`.
+- `server.py` extrai `resetTime` do Antigravity e salva no `accounts.json` e `quota_monitor.db`.
+- `app.js` exibe o tempo restante no card da conta.
+- A ordenação prioriza contas bloqueadas que renovam mais cedo.
