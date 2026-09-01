@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-set AGS_VER=v2.4.9
+set AGS_VER=v2.5.0
 title Assistente do AGS %AGS_VER% - Instalador Automatico
 color 0A
 cls
@@ -26,7 +26,7 @@ set SETUP_FILE=%AGS_LOCAL%\setup.ps1
 echo $OutputEncoding = [System.Text.Encoding]::UTF8
 echo [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 echo $ErrorActionPreference = 'Continue'
-echo $AGS_VERSION = "2.4.7"
+echo $AGS_VERSION = "2.5.0"
 echo Write-Host "`n[AGS] INICIANDO SETUP DO AGS v$AGS_VERSION" -ForegroundColor Cyan
 echo.
 echo $destDir = "$env:USERPROFILE\.gemini\antigravity-ide\scratch\gmail-switcher"
@@ -42,7 +42,7 @@ echo     Write-Host "  Baixando $file..." -ForegroundColor Yellow
 echo     $dest = "$destDir\$file"
 echo     $url  = "$baseUrl/$file"
 echo     $ok   = $false
-echo     try { & curl.exe -s -L --max-time 20 --retry 2 -o $dest $url; if (Test-Path $dest^) { $ok = $true } } catch {}
+echo     try { curl.exe -s -L --max-time 20 --retry 2 -o $dest $url; if (Test-Path $dest^) { $ok = $true } } catch {}
 echo     if (-not $ok^) {
 echo         try { Invoke-WebRequest -Uri $url -OutFile $dest -UseBasicParsing -TimeoutSec 20 -EA Stop; $ok = $true } catch {}
 echo     }
@@ -51,8 +51,8 @@ echo }
 echo.
 echo if (-not (Test-Path "$skillDir\accounts.json"^)^) {
 echo     $aUrl = "$baseUrl/accounts.json"
-echo     try { & curl.exe -s -L --max-time 20 -o "$skillDir\accounts.json" $aUrl } catch {}
-echo     if (-not (Test-Path "$skillDir\accounts.json"^)^) { '{"accounts":[]}' ^| Out-File -FilePath "$skillDir\accounts.json" -Encoding utf8 }
+echo     try { curl.exe -s -L --max-time 20 -o "$skillDir\accounts.json" $aUrl } catch {}
+echo     if (-not $ok^) { '{"accounts":[]}' ^| Out-File -FilePath "$skillDir\accounts.json" -Encoding utf8 }
 echo }
 echo.
 echo $taskName = "AntigravityServerWatchdog"
