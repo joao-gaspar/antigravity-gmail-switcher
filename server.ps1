@@ -135,8 +135,12 @@ while ($listener.IsListening) {
                         $lbl = if ($mq.label) { $mq.label } else { $mq.modelId }
                         if ($lbl) {
                             $rem = 1.0
-                            if ($mq.quotaInfo -and $mq.quotaInfo.resetTime) {
-                                $rem = 0.0
+                            if ($mq.quotaInfo) {
+                                if ($mq.quotaInfo.remainingFraction -ne $null) {
+                                    $rem = [double]$mq.quotaInfo.remainingFraction
+                                } elseif ($mq.quotaInfo.resetTime) {
+                                    $rem = 0.0
+                                }
                             }
                             $modelQuotas[$lbl] = @{
                                 remaining = $rem
