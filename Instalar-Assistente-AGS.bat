@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-set AGS_VER=v2.5.2
+set AGS_VER=v2.5.3
 title Assistente do AGS %AGS_VER% - Instalador Automatico
 color 0A
 cls
@@ -20,13 +20,12 @@ if not exist "%AGS_LOCAL%" mkdir "%AGS_LOCAL%"
 
 echo   [1/3] Preparando instalador...
 set SETUP_FILE=%AGS_LOCAL%\setup.ps1
-set LOG_FILE=%AGS_LOCAL%\install.log
 
 (
 echo $OutputEncoding = [System.Text.Encoding]::UTF8
 echo [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 echo $ErrorActionPreference = 'Continue'
-echo $AGS_VERSION = "2.5.2"
+echo $AGS_VERSION = "2.5.3"
 echo Write-Host "`n[AGS] INICIANDO SETUP DO AGS v$AGS_VERSION" -ForegroundColor Cyan
 echo.
 echo $destDir = "$env:USERPROFILE\.gemini\antigravity-ide\scratch\gmail-switcher"
@@ -55,7 +54,6 @@ echo     try { curl.exe -s -L --max-time 20 -o "$skillDir\accounts.json" $aUrl }
 echo     if (-not (Test-Path "$skillDir\accounts.json"^)^) { '{"accounts":[]}' ^| Out-File -FilePath "$skillDir\accounts.json" -Encoding utf8 }
 echo }
 echo.
-echo $taskName = "AntigravityServerWatchdog"
 echo $vbsPath = "$destDir\start-server.vbs"
 echo Write-Host "[INFO] Parando processos anteriores..." -ForegroundColor Yellow
 echo Get-Process python*, wscript -ErrorAction SilentlyContinue ^| Stop-Process -Force -ErrorAction SilentlyContinue
@@ -98,8 +96,8 @@ echo     }
 echo }
 ) > "%SETUP_FILE%"
 
-echo   [2/3] Executando instalador (Log em %LOG_FILE%)...
-powershell -NoProfile -ExecutionPolicy Bypass -File "%SETUP_FILE%" 2>&1 | powershell -NoProfile -Command "Tee-Object -FilePath '%LOG_FILE%'"
+echo   [2/3] Executando instalador...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%SETUP_FILE%"
 
 echo.
 echo   [3/3] Verificando servidor...
@@ -107,10 +105,11 @@ powershell -NoProfile -Command "[Console]::OutputEncoding=[System.Text.Encoding]
 
 echo.
 echo  ========================================================
-echo    [OK] CONCLUIDO! LOG SALVO EM: %LOG_FILE%
+echo    [OK] INSTALACAO CONCLUIDA COM SUCESSO!
 echo  ========================================================
 echo.
-echo   Pressione QUALQUER TECLA para fechar esta janela.
+echo   Pressione qualquer tecla para fechar esta janela.
 echo.
-pause >nul
+pause
+
 
