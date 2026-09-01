@@ -1,7 +1,7 @@
 @echo off
 setlocal enabledelayedexpansion
 chcp 65001 >nul
-set AGS_VER=v2.9.1
+set AGS_VER=v3.0.0
 set "SELF=%~f0"
 title Assistente do AGS %AGS_VER%
 color 0A
