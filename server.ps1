@@ -118,17 +118,16 @@ while ($listener.IsListening) {
 
             if ($statusObj -and $statusObj.userStatus) {
                 $us = $statusObj.userStatus
-                if ($us.email) {
-                    $agentEmail = [string]$us.email
-                } elseif ($us.user -and $us.user.email) {
-                    $agentEmail = [string]$us.user.email
-                }
+                if ($us.email) { $agentEmail = [string]$us.email }
+                elseif ($us.user -and $us.user.email) { $agentEmail = [string]$us.user.email }
+                elseif ($us.userInfo -and $us.userInfo.email) { $agentEmail = [string]$us.userInfo.email }
+                elseif ($us.userAccount -and $us.userAccount.email) { $agentEmail = [string]$us.userAccount.email }
+                elseif ($us.profile -and $us.profile.email) { $agentEmail = [string]$us.profile.email }
+                elseif ($us.primaryEmail) { $agentEmail = [string]$us.primaryEmail }
 
-                if ($us.name) {
-                    $agentName = [string]$us.name
-                } elseif ($us.user -and $us.user.name) {
-                    $agentName = [string]$us.user.name
-                }
+                if ($us.name) { $agentName = [string]$us.name }
+                elseif ($us.user -and $us.user.name) { $agentName = [string]$us.user.name }
+                elseif ($us.userInfo -and $us.userInfo.name) { $agentName = [string]$us.userInfo.name }
 
                 $configs = @()
                 if ($us.cascadeModelConfigData -and $us.cascadeModelConfigData.clientModelConfigs) {

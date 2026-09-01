@@ -653,11 +653,17 @@ function renderAccounts() {
                 qG = getFrac(accSnap.gemini_pct !== undefined ? accSnap.gemini_pct / 100 : null);
                 qC = getFrac(accSnap.claude_pct !== undefined ? accSnap.claude_pct / 100 : null);
                 qP = getFrac(accSnap.gpt_pct !== undefined ? accSnap.gpt_pct / 100 : null);
-            } else if (acc.tokenGemini !== undefined || acc.tokenClaude !== undefined || acc.tokenGpt !== undefined) {
-                qG = getFrac(acc.tokenGemini);
-                qC = getFrac(acc.tokenClaude);
-                qP = getFrac(acc.tokenGpt);
             }
+        }
+
+        if (qG === null && acc.tokenGemini !== null && acc.tokenGemini !== undefined) {
+            qG = getFrac(acc.tokenGemini);
+        }
+        if (qC === null && acc.tokenClaude !== null && acc.tokenClaude !== undefined) {
+            qC = getFrac(acc.tokenClaude);
+        }
+        if (qP === null && acc.tokenGpt !== null && acc.tokenGpt !== undefined) {
+            qP = getFrac(acc.tokenGpt);
         }
 
         const renderBar = (frac, label) => {
