@@ -118,15 +118,20 @@ while ($listener.IsListening) {
 
             if ($statusObj -and $statusObj.userStatus) {
                 $us = $statusObj.userStatus
-                if ($us.user -and $us.user.email) {
-                    $agentEmail = $us.user.email
-                    $agentName = $us.user.name
-                } elseif ($us.email) {
-                    $agentEmail = $us.email
+                if ($us.email) {
+                    $agentEmail = [string]$us.email
+                } elseif ($us.user -and $us.user.email) {
+                    $agentEmail = [string]$us.user.email
                 }
 
-                if ($us.modelQuotas) {
-                    foreach ($mq in $us.modelQuotas) {
+                if ($us.name) {
+                    $agentName = [string]$us.name
+                } elseif ($us.user -and $us.user.name) {
+                    $agentName = [string]$us.user.name
+                }
+
+                if ($us.cascadeModelConfigData -and $us.cascadeModelConfigData.clientModelConfigs) {
+                    foreach ($mq in $us.cascadeModelConfigData.clientModelConfigs) {
                         $lbl = if ($mq.label) { $mq.label } else { $mq.modelId }
                         if ($lbl) {
                             $rem = 1.0
