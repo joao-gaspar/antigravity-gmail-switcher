@@ -29,7 +29,7 @@ Write-Host "AGS Server running on http://127.0.0.1:$activePort/"
 # Helper for probing LanguageServer
 function Get-LanguageServerStatus {
     try {
-        $procs = Get-CimInstance Win32_Process -Filter "name LIKE 'language_server%'" | Select-Object ProcessId, CommandLine
+        $procs = Get-CimInstance Win32_Process | Where-Object { $_.Name -like 'language_server*' } | Sort-Object CreationDate -Descending
         if (-not $procs) { return $null }
 
         $netstat = netstat -ano 2>$null
@@ -37,7 +37,7 @@ function Get-LanguageServerStatus {
         foreach ($p in $procs) {
             $cl = $p.CommandLine
             $pidVal = $p.ProcessId
-            if (-not $cl -or $cl.Contains("--enable_lsp")) { continue }
+            if (-not $cl) { continue }
 
             $m = [regex]::Match($cl, '--csrf_token[=\s]+([\w-]+)')
             if (-not $m.Success) { continue }
@@ -75,7 +75,7 @@ function Get-LanguageServerStatus {
                     $resp.Close()
 
                     $parsed = $jsonStr | ConvertFrom-Json
-                    if ($parsed.userStatus) {
+                    if ($parsed.userStatus -and ($parsed.userStatus.email -or ($parsed.userStatus.user -and $parsed.userStatus.user.email))) {
                         return @{
                             userStatus = $parsed.userStatus
                             port = $port
