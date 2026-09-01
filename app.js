@@ -337,26 +337,31 @@ function switchView(tab) {
 }
 
 function setupEventListeners() {
-    elements.btnShowAccounts.addEventListener('click', () => switchView('accounts'));
-    elements.btnShowGuide.addEventListener('click', () => switchView('guide'));
-    elements.btnAddAccount.addEventListener('click', () => openModal());
-    elements.btnEmptyAdd.addEventListener('click', () => openModal());
-    elements.btnCloseModal.addEventListener('click', closeModal);
-    elements.btnCancelModal.addEventListener('click', closeModal);
-    elements.accountForm.addEventListener('submit', handleFormSubmit);
+    if (elements.btnShowAccounts) elements.btnShowAccounts.addEventListener('click', () => switchView('accounts'));
+    if (elements.btnShowGuide) elements.btnShowGuide.addEventListener('click', () => switchView('guide'));
+    if (elements.btnAddAccount) elements.btnAddAccount.addEventListener('click', () => openModal());
+    if (elements.btnEmptyAdd)   elements.btnEmptyAdd.addEventListener('click', () => openModal());
 
-    elements.colorPresets.addEventListener('click', (e) => {
-        const target = e.target.closest('.color-preset');
-        if (!target) return;
-        document.querySelectorAll('.color-preset').forEach(p => p.classList.remove('active'));
-        target.classList.add('active');
-        state.selectedPresetTheme = target.dataset.theme;
-    });
+    if (elements.btnCloseModal) elements.btnCloseModal.addEventListener('click', closeModal);
+    if (elements.btnCancelModal) elements.btnCancelModal.addEventListener('click', closeModal);
+    if (elements.accountForm) elements.accountForm.addEventListener('submit', handleFormSubmit);
 
-    elements.searchInput.addEventListener('input', (e) => {
-        state.searchQuery = e.target.value.toLowerCase().trim();
-        renderAccounts();
-    });
+    if (elements.colorPresets) {
+        elements.colorPresets.addEventListener('click', (e) => {
+            const target = e.target.closest('.color-preset');
+            if (!target) return;
+            document.querySelectorAll('.color-preset').forEach(p => p.classList.remove('active'));
+            target.classList.add('active');
+            state.selectedPresetTheme = target.dataset.theme;
+        });
+    }
+
+    if (elements.searchInput) {
+        elements.searchInput.addEventListener('input', (e) => {
+            state.searchQuery = e.target.value.toLowerCase().trim();
+            renderAccounts();
+        });
+    }
 
     const filterSelect = document.getElementById('category-filter-select');
     if (filterSelect) {
@@ -370,19 +375,23 @@ function setupEventListeners() {
         elements.btnNextAccount.addEventListener('click', handleNextAccount);
     }
 
-    elements.btnCloseDrawer.addEventListener('click', closeNotesDrawer);
-    elements.drawerNotesTextarea.addEventListener('input', (e) => {
-        if (!state.activeNoteAccountId) return;
-        const account = state.accounts.find(a => a.id === state.activeNoteAccountId);
-        if (account) {
-            account.notes = e.target.value;
-            saveAccounts();
-        }
-    });
+    if (elements.btnCloseDrawer) elements.btnCloseDrawer.addEventListener('click', closeNotesDrawer);
+    if (elements.drawerNotesTextarea) {
+        elements.drawerNotesTextarea.addEventListener('input', (e) => {
+            if (!state.activeNoteAccountId) return;
+            const account = state.accounts.find(a => a.id === state.activeNoteAccountId);
+            if (account) {
+                account.notes = e.target.value;
+                saveAccounts();
+            }
+        });
+    }
 
-    elements.accountModal.addEventListener('click', (e) => {
-        if (e.target === elements.accountModal) closeModal();
-    });
+    if (elements.accountModal) {
+        elements.accountModal.addEventListener('click', (e) => {
+            if (e.target === elements.accountModal) closeModal();
+        });
+    }
 }
 
 function getChooserUrl(email, service) {
@@ -424,11 +433,17 @@ function sortAccountsSmart(accountsList) {
         const p = acc.tokenGpt   ?? 0;
         return 3 - (g + c + p); // higher = more tokens available
     };
-    const resetTs   = acc => acc.reset_at ? new Date(acc.reset_at.replace(' ', 'T')).getTime() : Infinity;
+    const parseResetTs = val => {
+        if (!val || typeof val !== 'string') return null;
+        const formattedStr = val.includes(' ') ? val.replace(' ', 'T') : val;
+        const ts = new Date(formattedStr).getTime();
+        return isNaN(ts) ? null : ts;
+    };
+
+    const resetTs = acc => parseResetTs(acc.reset_at) ?? Infinity;
     const hasFutureReset = acc => {
-        if (!acc.reset_at) return false;
-        const ts = new Date(acc.reset_at.replace(' ', 'T')).getTime();
-        return !isNaN(ts) && ts > Date.now();
+        const ts = parseResetTs(acc.reset_at);
+        return ts !== null && ts > Date.now();
     };
     const isBlocked = acc =>
         acc.status === 'exhausted' ||
@@ -469,7 +484,7 @@ function sortAccountsSmart(accountsList) {
 }
 
 function formatResetRemaining(resetAtStr) {
-    if (!resetAtStr) return null;
+    if (!resetAtStr || typeof resetAtStr !== 'string') return null;
     try {
         let formattedStr = resetAtStr.trim();
         // Replace space with T for ISO compliance
