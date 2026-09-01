@@ -855,6 +855,42 @@ function fetchLive() {
             state.liveSuggestEmail = suggestEmail;
             state.liveLastCheck = lastCheck;
 
+            // ── Write live quota back into the active account card ──────────
+            if (agentEmail && state.liveQuota) {
+                const liveAcc = state.accounts.find(a =>
+                    a.email && a.email.toLowerCase() === agentEmail.toLowerCase());
+                if (liveAcc) {
+                    liveAcc.tokenGemini = parseFloat((1.0 - state.liveQuota.gemini).toFixed(4));
+                    liveAcc.tokenClaude = parseFloat((1.0 - state.liveQuota.claude).toFixed(4));
+                    liveAcc.tokenGpt    = parseFloat((1.0 - state.liveQuota.gpt).toFixed(4));
+                    saveAccounts();
+                }
+            }
+
+            // ── POST all accounts (with token data) to cloud /api/sync ─────
+            const machInfo = data.machine || {};
+            const syncPayload = {
+                machine_id:   machInfo.machine_id || 'unknown',
+                hostname:     machInfo.hostname   || '',
+                username:     machInfo.username   || '',
+                active_email: agentEmail,
+                suggest_email: suggestEmail,
+                last_seen:    new Date().toISOString(),
+                accounts: state.accounts.map(a => ({
+                    email:       a.email,
+                    tokenGemini: a.tokenGemini || 0,
+                    tokenClaude: a.tokenClaude || 0,
+                    tokenGpt:    a.tokenGpt    || 0,
+                    status:      a.status      || 'available',
+                    reset_at:    a.reset_at    || null
+                }))
+            };
+            fetch('/api/sync', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(syncPayload)
+            }).catch(() => {});
+
     // Save active machine details
     if (data.machine) {
         state.currentMachine = data.machine;
@@ -917,6 +953,28 @@ function fetchLive() {
                             Object.assign(match, cm);
                         }
                     });
+                }
+
+                // ── Merge cloud token data into local accounts ────────────
+                if (cloudData && cloudData.accounts && cloudData.accounts.length > 0) {
+                    let tokensMerged = false;
+                    cloudData.accounts.forEach(ca => {
+                        if (!ca.email) return;
+                        // Skip updating the account that belongs to THIS machine's
+                        // active email — our local liveQuota is more accurate.
+                        if (agentEmail && ca.email.toLowerCase() === agentEmail.toLowerCase()) return;
+                        const local = state.accounts.find(a =>
+                            a.email && a.email.toLowerCase() === ca.email.toLowerCase());
+                        if (local) {
+                            if (ca.tokenGemini != null) local.tokenGemini = ca.tokenGemini;
+                            if (ca.tokenClaude != null) local.tokenClaude = ca.tokenClaude;
+                            if (ca.tokenGpt    != null) local.tokenGpt    = ca.tokenGpt;
+                            if (ca.status)              local.status      = ca.status;
+                            if (ca.reset_at !== undefined) local.reset_at  = ca.reset_at;
+                            tokensMerged = true;
+                        }
+                    });
+                    if (tokensMerged) saveAccounts();
                 }
                 state.machines = combined;
                 state.snapshots = snapshots;
