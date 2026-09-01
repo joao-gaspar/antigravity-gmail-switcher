@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-set AGS_VER=v2.4.8
+set AGS_VER=v2.4.9
 title Assistente do AGS %AGS_VER% - Instalador Automatico
 color 0A
 cls
@@ -36,13 +36,23 @@ echo if (-not (Test-Path $skillDir^)^) { New-Item -ItemType Directory -Force -Pa
 echo.
 echo $baseUrl = "https://raw.githubusercontent.com/joao-gaspar/antigravity-gmail-switcher/main"
 echo $files = @("server.py", "database.py", "start-server.vbs"^)
+echo [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 echo foreach ($file in $files^) {
 echo     Write-Host "  Baixando $file..." -ForegroundColor Yellow
-echo     try { Invoke-WebRequest -Uri "$baseUrl/$file" -OutFile "$destDir\$file" -UseBasicParsing -ErrorAction Stop } catch { Write-Host "  [AVISO] Falha ao baixar $file" -ForegroundColor Red }
+echo     $dest = "$destDir\$file"
+echo     $url  = "$baseUrl/$file"
+echo     $ok   = $false
+echo     try { & curl.exe -s -L --max-time 20 --retry 2 -o $dest $url; if (Test-Path $dest^) { $ok = $true } } catch {}
+echo     if (-not $ok^) {
+echo         try { Invoke-WebRequest -Uri $url -OutFile $dest -UseBasicParsing -TimeoutSec 20 -EA Stop; $ok = $true } catch {}
+echo     }
+echo     if (-not $ok^) { Write-Host "  [AVISO] Falha ao baixar $file" -ForegroundColor Red }
 echo }
 echo.
 echo if (-not (Test-Path "$skillDir\accounts.json"^)^) {
-echo     try { Invoke-WebRequest -Uri "$baseUrl/accounts.json" -OutFile "$skillDir\accounts.json" -UseBasicParsing } catch { '{"accounts":[]}' ^| Out-File -FilePath "$skillDir\accounts.json" -Encoding utf8 }
+echo     $aUrl = "$baseUrl/accounts.json"
+echo     try { & curl.exe -s -L --max-time 20 -o "$skillDir\accounts.json" $aUrl } catch {}
+echo     if (-not (Test-Path "$skillDir\accounts.json"^)^) { '{"accounts":[]}' ^| Out-File -FilePath "$skillDir\accounts.json" -Encoding utf8 }
 echo }
 echo.
 echo $taskName = "AntigravityServerWatchdog"
