@@ -68,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateLiveBanner(null, null, null, true);
     setInterval(updateTimers, 1000);
     fetchLive();
-    setInterval(fetchLive, 5000);
+    setInterval(fetchLive, 3000);
 });
 
 function safeGetStorage(key) {
@@ -424,8 +424,16 @@ function sortAccountsSmart(accountsList) {
         const p = acc.tokenGpt   ?? 0;
         return 3 - (g + c + p); // higher = more tokens available
     };
-    const resetTs  = acc => acc.reset_at ? new Date(acc.reset_at.replace(' ', 'T')).getTime() : Infinity;
-    const isBlocked = acc => acc.status === 'exhausted' || acc.status === 'rate_limited';
+    const resetTs   = acc => acc.reset_at ? new Date(acc.reset_at.replace(' ', 'T')).getTime() : Infinity;
+    const hasFutureReset = acc => {
+        if (!acc.reset_at) return false;
+        const ts = new Date(acc.reset_at.replace(' ', 'T')).getTime();
+        return !isNaN(ts) && ts > Date.now();
+    };
+    const isBlocked = acc =>
+        acc.status === 'exhausted' ||
+        acc.status === 'rate_limited' ||
+        hasFutureReset(acc);
 
     return [...accountsList].sort((a, b) => {
         // 0. Active account always first
