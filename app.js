@@ -602,58 +602,58 @@ function renderAccounts() {
         const avatarHtml = `<div class="account-avatar" style="width: 28px; height: 28px; font-size: 0.8rem;">${avatarInitials}</div>`;
 
         // Live Quota Bars: pull either from local live state OR from database snapshots for the selected machine
-        let quotaBarsHtml = '';
-        let qG = 0.0, qC = 0.0, qP = 0.0, hasLiveQuota = false;
+        const getFrac = val => {
+            if (val === undefined || val === null || isNaN(val)) return 1.0;
+            const n = Number(val);
+            return n > 1 ? n / 100 : Math.max(0, Math.min(1, n));
+        };
+
+        let qG = 1.0, qC = 1.0, qP = 1.0;
 
         if (isActive && isLocalMachineSelected && state.liveQuota) {
-            qG = state.liveQuota.gemini ?? 1.0;
-            qC = state.liveQuota.claude ?? 0.0;
-            qP = state.liveQuota.gpt    ?? 0.0;
-            hasLiveQuota = true;
+            qG = getFrac(state.liveQuota.gemini);
+            qC = getFrac(state.liveQuota.claude);
+            qP = getFrac(state.liveQuota.gpt);
         } else {
-            // Match snapshot by email for the selected machine
             const accSnap = state.snapshots && state.snapshots.find(s => 
                 s.email.toLowerCase() === acc.email.toLowerCase() && 
                 (!state.selectedMachineId || s.machine_id === state.selectedMachineId)
             );
             if (accSnap) {
-                qG = (accSnap.gemini_pct ?? 100) / 100;
-                qC = (accSnap.claude_pct ?? 0) / 100;
-                qP = (accSnap.gpt_pct ?? 0) / 100;
-                hasLiveQuota = true;
-            } else if (acc.tokenGemini !== undefined || acc.tokenClaude !== undefined) {
-                qG = (acc.tokenGemini ?? 100) / 100;
-                qC = (acc.tokenClaude ?? 0) / 100;
-                qP = (acc.tokenGpt    ?? 0) / 100;
-                hasLiveQuota = true;
+                qG = getFrac((accSnap.gemini_pct ?? 100) / 100);
+                qC = getFrac((accSnap.claude_pct ?? 100) / 100);
+                qP = getFrac((accSnap.gpt_pct ?? 100) / 100);
+            } else {
+                qG = getFrac(acc.tokenGemini);
+                qC = getFrac(acc.tokenClaude);
+                qP = getFrac(acc.tokenGpt);
             }
         }
 
-        if (hasLiveQuota) {
-            const renderBar = (frac, label) => {
-                const pct = Math.round(frac * 100);
-                const col = pct > 50 ? '#34d399' : pct > 15 ? '#f59e0b' : '#ef4444';
-                return `
-                <div style="display:flex; align-items:center; gap:4px; margin-bottom:2px;">
-                    <span style="font-size:0.58rem; color:${col}; min-width:68px; font-weight:600;">${label}</span>
-                    <div style="flex:1; height:4px; background:rgba(255,255,255,0.08); border-radius:2px; overflow:hidden;">
-                        <div style="height:100%; width:${pct}%; background:${col}; border-radius:2px; transition:width 0.4s;"></div>
-                    </div>
-                    <span style="font-size:0.55rem; color:${col}; width:30px; text-align:right; font-family:monospace; font-weight:bold;">${pct}%</span>
-                </div>`;
-            };
-
-            const qCG = Math.max(qC, qP);
-            quotaBarsHtml = `
-            <div style="margin-top:4px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.06);">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
-                    <span style="font-size:0.54rem; color:#9ca3af; font-weight:600;">Modelo</span>
-                    <span style="font-size:0.54rem; color:#9ca3af; font-weight:600;">Consumo</span>
+        const renderBar = (frac, label) => {
+            const safeFrac = isNaN(frac) ? 1.0 : Math.max(0, Math.min(1, frac));
+            const pct = Math.round(safeFrac * 100);
+            const col = pct > 50 ? '#34d399' : pct > 15 ? '#f59e0b' : '#ef4444';
+            return `
+            <div style="display:flex; align-items:center; gap:4px; margin-bottom:2px;">
+                <span style="font-size:0.58rem; color:${col}; min-width:68px; font-weight:600;">${label}</span>
+                <div style="flex:1; height:4px; background:rgba(255,255,255,0.08); border-radius:2px; overflow:hidden;">
+                    <div style="height:100%; width:${pct}%; background:${col}; border-radius:2px; transition:width 0.4s;"></div>
                 </div>
-                ${renderBar(qG, 'Gemini')}
-                ${renderBar(qCG, 'Claude / GPT')}
+                <span style="font-size:0.55rem; color:${col}; width:30px; text-align:right; font-family:monospace; font-weight:bold;">${pct}%</span>
             </div>`;
-        }
+        };
+
+        const qCG = Math.max(qC, qP);
+        const quotaBarsHtml = `
+        <div style="margin-top:4px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.06);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+                <span style="font-size:0.54rem; color:#9ca3af; font-weight:600;">Modelo</span>
+                <span style="font-size:0.54rem; color:#9ca3af; font-weight:600;">Cota Restante</span>
+            </div>
+            ${renderBar(qG, 'Gemini')}
+            ${renderBar(qCG, 'Claude / GPT')}
+        </div>`;
 
         const isSuggest = state.liveSuggestEmail && acc.email === state.liveSuggestEmail && !isActive;
         const resetLabel = isBlocked && acc.reset_at ? formatResetRemaining(acc.reset_at) : null;
@@ -863,8 +863,8 @@ function fetchLive() {
 
             state.liveQuota = {
                 gemini: hasGemini ? geminiMax : 1.0,
-                claude: hasClaude ? claudeMin : 0.0,
-                gpt:    hasGpt    ? gptMin    : 0.0
+                claude: hasClaude ? claudeMin : 1.0,
+                gpt:    hasGpt    ? gptMin    : 1.0
             };
             state.liveModelQuotas = modelQuotas;
             state.liveSuggestEmail = suggestEmail;
@@ -875,9 +875,9 @@ function fetchLive() {
                 const liveAcc = state.accounts.find(a =>
                     a.email && a.email.toLowerCase() === agentEmail.toLowerCase());
                 if (liveAcc) {
-                    liveAcc.tokenGemini = parseFloat((1.0 - state.liveQuota.gemini).toFixed(4));
-                    liveAcc.tokenClaude = parseFloat((1.0 - state.liveQuota.claude).toFixed(4));
-                    liveAcc.tokenGpt    = parseFloat((1.0 - state.liveQuota.gpt).toFixed(4));
+                    liveAcc.tokenGemini = Number(state.liveQuota.gemini) || 1.0;
+                    liveAcc.tokenClaude = Number(state.liveQuota.claude) || 1.0;
+                    liveAcc.tokenGpt    = Number(state.liveQuota.gpt)    || 1.0;
                     saveAccounts();
                 }
             }
