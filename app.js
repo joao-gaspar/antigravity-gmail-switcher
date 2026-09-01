@@ -930,11 +930,22 @@ function processLiveData(data) {
 }
 
 function fetchCloudSync() {
-    fetch('/api/sync')
+    let cachedMachines = [];
+    try {
+        const raw = safeGetStorage('antigravity_cloud_machines_v1');
+        if (raw) cachedMachines = JSON.parse(raw);
+    } catch (e) {}
+
+    fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seed_machines: cachedMachines })
+    })
         .then(r => r.json())
         .then(cloudData => {
             if (cloudData && cloudData.machines && cloudData.machines.length > 0) {
                 state.machines = cloudData.machines;
+                safeSetStorage('antigravity_cloud_machines_v1', JSON.stringify(state.machines));
                 
                 const selMachine = state.machines.find(m => m.machine_id === state.selectedMachineId) || state.machines[0];
                 if (selMachine) {

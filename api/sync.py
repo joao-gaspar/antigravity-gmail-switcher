@@ -1,9 +1,24 @@
 from http.server import BaseHTTPRequestHandler
 import json
+import os
 
-# In-memory cloud stores — reset on cold start, replenished by frequent polls
-_machines_store = {}   # machine_id -> machine snapshot
-_accounts_store = {}   # email (lower) -> { email, tokenGemini, tokenClaude, tokenGpt, status, reset_at }
+TMP_FILE = "/tmp/ags_sync_store.json"
+
+def _load_store():
+    try:
+        if os.path.exists(TMP_FILE):
+            with open(TMP_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return {"machines": {}, "accounts": {}}
+
+def _save_store(data):
+    try:
+        with open(TMP_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f)
+    except Exception:
+        pass
 
 class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
@@ -17,11 +32,21 @@ class handler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(length)
-            data = json.loads(body.decode('utf-8'))
+            data = json.loads(body.decode('utf-8')) if body else {}
+
+            store = _load_store()
+            m_store = store.get("machines", {})
+            a_store = store.get("accounts", {})
+
+            # Seed machines from client cache if server cold-started
+            for seed_m in data.get("seed_machines", []):
+                smid = seed_m.get("machine_id")
+                if smid and smid not in m_store:
+                    m_store[smid] = seed_m
 
             mid = data.get('machine_id')
             if mid:
-                _machines_store[mid] = {
+                m_store[mid] = {
                     "machine_id":     mid,
                     "hostname":       data.get("hostname", "PC"),
                     "username":       data.get("username", ""),
@@ -38,8 +63,8 @@ class handler(BaseHTTPRequestHandler):
                 email = acc.get("email", "").strip().lower()
                 if not email:
                     continue
-                existing = _accounts_store.get(email, {})
-                _accounts_store[email] = {
+                existing = a_store.get(email, {})
+                a_store[email] = {
                     "email":       acc.get("email", email),
                     "tokenGemini": acc.get("tokenGemini", existing.get("tokenGemini", 0)),
                     "tokenClaude": acc.get("tokenClaude", existing.get("tokenClaude", 0)),
@@ -49,20 +74,23 @@ class handler(BaseHTTPRequestHandler):
                     "updated_at":  data.get("last_seen", ""),
                 }
 
+            _save_store({"machines": m_store, "accounts": a_store})
+
             resp = {
                 "status":   "ok",
-                "machines": list(_machines_store.values()),
-                "accounts": list(_accounts_store.values())
+                "machines": list(m_store.values()),
+                "accounts": list(a_store.values())
             }
             self._send_json(200, resp)
         except Exception as e:
             self._send_json(500, {"error": str(e)})
 
     def do_GET(self):
+        store = _load_store()
         resp = {
             "status":   "ok",
-            "machines": list(_machines_store.values()),
-            "accounts": list(_accounts_store.values())
+            "machines": list(store.get("machines", {}).values()),
+            "accounts": list(store.get("accounts", {}).values())
         }
         self._send_json(200, resp)
 
