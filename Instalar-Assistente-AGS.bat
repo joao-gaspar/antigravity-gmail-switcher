@@ -1,22 +1,22 @@
 @echo off
+setlocal enabledelayedexpansion
 chcp 65001 >nul
-set AGS_VER=v2.7.0
-title Assistente do AGS %AGS_VER% - Instalador Automatico
+set AGS_VER=v2.8.0
+title Assistente do AGS %AGS_VER%
 color 0A
 cls
 echo.
 echo  ========================================================
-echo    [AGS] ASSISTENTE DO AGS %AGS_VER% - CONFIGURACAO AUTOMATICA
+echo    [AGS] ASSISTENTE DO AGS %AGS_VER% - CONFIGURACAO
 echo  ========================================================
 echo.
-echo   Versao do Script: %AGS_VER% (Build 2026.08.31)
+echo   Versao do Script: %AGS_VER% (Build 2026.09.01)
 echo   Configurando o monitoramento do Antigravity nesta maquina...
 echo   Por favor, aguarde alguns segundos.
 echo.
 
 set "DEST_DIR=%USERPROFILE%\.gemini\antigravity-ide\scratch\gmail-switcher"
 set "SKILL_DIR=%USERPROFILE%\.gemini\config\skills\gmail-switcher"
-set "STARTUP_DIR=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup"
 
 if not exist "%DEST_DIR%" mkdir "%DEST_DIR%"
 if not exist "%SKILL_DIR%" mkdir "%SKILL_DIR%"
@@ -45,58 +45,70 @@ if not defined PY_EXE if exist "%APPDATA%\AGS\python\pythonw.exe" set "PY_EXE=%A
 
 if not defined PY_EXE (
     where /q pythonw.exe
-    if errorlevel 1 (
-        where /q python.exe
-        if errorlevel 1 (
-            echo   [INFO] Python nao encontrado. Baixando Python Portable (10MB)...
-            if not exist "%APPDATA%\AGS\python" mkdir "%APPDATA%\AGS\python"
-            curl.exe -s -L --max-time 30 -o "%APPDATA%\AGS\python.zip" "https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip"
-            tar.exe -xf "%APPDATA%\AGS\python.zip" -C "%APPDATA%\AGS\python" >nul 2>&1
-            del /f /q "%APPDATA%\AGS\python.zip" >nul 2>&1
-            if exist "%APPDATA%\AGS\python\pythonw.exe" set "PY_EXE=%APPDATA%\AGS\python\pythonw.exe"
-            if exist "%APPDATA%\AGS\python\python.exe" set "PY_EXE=%APPDATA%\AGS\python\python.exe"
-        ) else (
-            for /f "tokens=*" %%a in ('where python.exe') do set "PY_EXE=%%a" & goto :found_py
-        )
-    ) else (
+    if not errorlevel 1 (
         for /f "tokens=*" %%a in ('where pythonw.exe') do set "PY_EXE=%%a" & goto :found_py
     )
+    where /q python.exe
+    if not errorlevel 1 (
+        for /f "tokens=*" %%a in ('where python.exe') do set "PY_EXE=%%a" & goto :found_py
+    )
+    echo   [INFO] Python nao encontrado. Baixando Python Portable (10MB)...
+    if not exist "%APPDATA%\AGS\python" mkdir "%APPDATA%\AGS\python"
+    curl.exe -s -L --max-time 60 -o "%APPDATA%\AGS\python.zip" "https://www.python.org/ftp/python/3.11.9/python-3.11.9-embed-amd64.zip"
+    tar.exe -xf "%APPDATA%\AGS\python.zip" -C "%APPDATA%\AGS\python" >nul 2>&1
+    del /f /q "%APPDATA%\AGS\python.zip" >nul 2>&1
+    if exist "%APPDATA%\AGS\python\pythonw.exe" set "PY_EXE=%APPDATA%\AGS\python\pythonw.exe"
+    if exist "%APPDATA%\AGS\python\python.exe" set "PY_EXE=%APPDATA%\AGS\python\python.exe"
 )
 :found_py
 
+if not defined PY_EXE (
+    color 0C
+    echo.
+    echo   [ERRO] Nao foi possivel encontrar ou instalar o Python.
+    echo   Instale o Python manualmente em https://www.python.org e rode este bat novamente.
+    pause
+    exit /b 1
+)
+
 echo   [OK] Python localizado: %PY_EXE%
 
-echo   [3/3] Configurando autostart e iniciando servidor...
-(
-    echo @echo off
-    echo start "" "%PY_EXE%" -u "%DEST_DIR%\server.py"
-) > "%STARTUP_DIR%\start-ags.cmd"
-
-:: Finalizar processos antigos e iniciar servidor limpo
-taskkill /f /im python.exe /im pythonw.exe >nul 2>&1
+echo   [3/3] Encerrando instancia anterior do servidor (somente server.py)...
+:: Mata apenas processos python que estejam rodando server.py especificamente
+powershell -NoProfile -Command "Get-WmiObject Win32_Process | Where-Object { ($_.Name -like 'python*') -and ($_.CommandLine -like '*server.py*') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"
 ping 127.0.0.1 -n 2 >nul
+
+echo   Iniciando servidor AGS em segundo plano...
+:: Inicia sem registrar Startup - roda somente durante esta sessao
 start "" "%PY_EXE%" -u "%DEST_DIR%\server.py"
-ping 127.0.0.1 -n 3 >nul
+ping 127.0.0.1 -n 4 >nul
 
 echo.
 echo   Verificando status do servidor...
-curl.exe -s -m 3 "http://127.0.0.1:8999/api/status" >nul 2>&1
-if %errorlevel% equ 0 (
+set PORTA_ATIVA=
+for %%P in (8000 8999 8998 8997 8996 8995) do (
+    if not defined PORTA_ATIVA (
+        curl.exe -s -m 2 "http://127.0.0.1:%%P/api/status" >nul 2>&1
+        if !errorlevel! equ 0 set "PORTA_ATIVA=%%P"
+    )
+)
+
+if defined PORTA_ATIVA (
     color 0A
-    echo   [OK] SERVIDOR ON na porta 8999!
+    echo   [OK] SERVIDOR ATIVO na porta %PORTA_ATIVA%!
 ) else (
     color 0E
-    echo   [INFO] Servidor iniciando em segundo plano...
+    echo   [INFO] Servidor iniciando em segundo plano.
+    echo   Aguarde alguns segundos e recarregue a pagina da Vercel.
 )
 
 echo.
 echo  ========================================================
-echo    [OK] INSTALACAO DO AGS %AGS_VER% CONCLUIDA COM SUCESSO!
+echo    [AGS] CONFIGURACAO CONCLUIDA - %AGS_VER%
 echo  ========================================================
 echo.
-echo   O Assistente do AGS ja esta ativo nesta maquina.
-echo   Pressione qualquer tecla para fechar esta janela e recarregar a Vercel.
+echo   Para manter o servidor ativo apos fechar esta janela,
+echo   abra o terminal do Antigravity IDE (Ctrl+Til) e rode:
+echo   python -u "%DEST_DIR%\server.py"
 echo.
 pause
-
-
