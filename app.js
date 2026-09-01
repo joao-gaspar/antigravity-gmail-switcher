@@ -1021,15 +1021,85 @@ function fetchLive() {
         })
         .catch(err => {
             clearTimeout(timeoutId);
-            // Even if offline, try fetching cloud synced machines
+            // Fetch cloud synced machines & accounts pushed natively by PowerShell server.ps1
             fetch('/api/sync')
                 .then(r => r.json())
                 .then(cloudData => {
                     if (cloudData && cloudData.machines && cloudData.machines.length > 0) {
                         state.machines = cloudData.machines;
-                        renderAccounts();
+                        
+                        // Select current machine or target machine from cloud
+                        const selMachine = state.machines.find(m => m.machine_id === state.selectedMachineId) || state.machines[0];
+                        if (selMachine) {
+                            const cloudActiveEmail = selMachine.active_email;
+                            const cloudModelQuotas = selMachine.model_quotas || {};
+
+                            let geminiMax = null, claudeMin = null, gptMin = null;
+                            let hasGemini = false, hasClaude = false, hasGpt = false;
+
+                            if (cloudModelQuotas && typeof cloudModelQuotas === 'object' && Object.keys(cloudModelQuotas).length > 0) {
+                                for (const [lbl, info] of Object.entries(cloudModelQuotas)) {
+                                    const rem = typeof info === 'object' ? info.remaining : (typeof info === 'number' ? info : null);
+                                    if (rem !== null && rem !== undefined) {
+                                        if (/gemini/i.test(lbl)) {
+                                            geminiMax = hasGemini ? Math.max(geminiMax, rem) : rem;
+                                            hasGemini = true;
+                                        } else if (/claude/i.test(lbl)) {
+                                            claudeMin = hasClaude ? Math.min(claudeMin, rem) : rem;
+                                            hasClaude = true;
+                                        } else if (/gpt|openai|oss/i.test(lbl)) {
+                                            gptMin = hasGpt ? Math.min(gptMin, rem) : rem;
+                                            hasGpt = true;
+                                        }
+                                    }
+                                }
+                            }
+
+                            state.liveQuota = {
+                                gemini: hasGemini ? geminiMax : null,
+                                claude: hasClaude ? claudeMin : null,
+                                gpt:    hasGpt    ? gptMin    : null
+                            };
+
+                            if (cloudActiveEmail) {
+                                let detectedAcc = state.accounts.find(a => a.email.toLowerCase() === cloudActiveEmail.toLowerCase());
+                                if (detectedAcc) {
+                                    state.activeAccountId = detectedAcc.id;
+                                    detectedAcc.tokenGemini = state.liveQuota.gemini;
+                                    detectedAcc.tokenClaude = state.liveQuota.claude;
+                                    detectedAcc.tokenGpt    = state.liveQuota.gpt;
+                                    detectedAcc.lastMeasuredAt = new Date().toISOString();
+                                    if (state.liveQuota.gemini === 0 && state.liveQuota.claude === 0 && state.liveQuota.gpt === 0) {
+                                        detectedAcc.status = 'exhausted';
+                                    }
+                                }
+                            }
+                        }
                     }
-                    updateLiveBanner(null, null, null, true);
+
+                    if (cloudData && cloudData.accounts && cloudData.accounts.length > 0) {
+                        cloudData.accounts.forEach(ca => {
+                            if (!ca.email) return;
+                            const local = state.accounts.find(a => a.email && a.email.toLowerCase() === ca.email.toLowerCase());
+                            if (local) {
+                                if (ca.tokenGemini != null) local.tokenGemini = ca.tokenGemini;
+                                if (ca.tokenClaude != null) local.tokenClaude = ca.tokenClaude;
+                                if (ca.tokenGpt    != null) local.tokenGpt    = ca.tokenGpt;
+                                if (ca.status)              local.status      = ca.status;
+                                if (ca.reset_at !== undefined) local.reset_at  = ca.reset_at;
+                            }
+                        });
+                    }
+
+                    renderAccounts();
+                    const activeCloudMachine = state.machines.find(m => m.machine_id === state.selectedMachineId) || state.machines[0];
+                    updateLiveBanner(
+                        activeCloudMachine ? activeCloudMachine.active_email : null,
+                        activeCloudMachine ? activeCloudMachine.suggest_email : null,
+                        activeCloudMachine ? activeCloudMachine.last_seen : null,
+                        false,
+                        activeCloudMachine ? activeCloudMachine.suggest_reason : ''
+                    );
                 })
                 .catch(() => {
                     updateLiveBanner(null, null, null, true);

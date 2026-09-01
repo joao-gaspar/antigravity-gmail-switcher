@@ -167,6 +167,23 @@ while ($listener.IsListening) {
             $json = $resMap | ConvertTo-Json -Depth 6
             $buffer = [System.Text.Encoding]::UTF8.GetBytes($json)
             $response.ContentType = "application/json; charset=utf-8"
+
+            # Direct PowerShell Cloud Push to Vercel (bypasses browser HTTPS/HTTP Mixed Content restrictions)
+            if ($global:lastCloudSync -eq $null -or ((Get-Date) - $global:lastCloudSync).TotalSeconds -ge 4) {
+                $global:lastCloudSync = Get-Date
+                try {
+                    $syncPayload = @{
+                        machine_id   = "mac-" + $env:COMPUTERNAME.ToLower()
+                        hostname     = $env:COMPUTERNAME
+                        username     = $env:USERNAME
+                        active_email = $agentEmail
+                        model_quotas = $modelQuotas
+                        last_seen    = (Get-Date).ToString("o")
+                    } | ConvertTo-Json -Depth 6
+
+                    $null = Invoke-RestMethod -Uri "https://antigravity-gmail-switcher.vercel.app/api/sync" -Method POST -Body $syncPayload -ContentType "application/json" -TimeoutSec 4
+                } catch {}
+            }
         } else {
             $resMap = @{ status = "ok"; message = "AGS Native PowerShell Server Ready" }
             $json = $resMap | ConvertTo-Json
