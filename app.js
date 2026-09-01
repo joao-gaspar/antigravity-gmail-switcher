@@ -97,9 +97,10 @@ function loadAccounts() {
             if (Array.isArray(parsed) && parsed.length > 0) {
                 state.accounts = parsed;
                 state.accounts.forEach(a => {
-                    if (a.email === 'aluno10@tilab.com.br' && a.tokenGemini === 368) {
-                        a.tokenGemini = 0;
-                    }
+                    // Migrate legacy unmeasured 0 / integer defaults to null
+                    if (!a.lastMeasuredAt && (a.tokenGemini === 0 || a.tokenGemini === 368)) a.tokenGemini = null;
+                    if (!a.lastMeasuredAt && (a.tokenClaude === 0 || a.tokenClaude === 36))  a.tokenClaude = null;
+                    if (!a.lastMeasuredAt && (a.tokenGpt    === 0 || a.tokenGpt    === 36))  a.tokenGpt    = null;
                 });
                 loaded = true;
             }
@@ -117,9 +118,9 @@ function loadAccounts() {
                         "theme": "gradient-blue",
                         "notes": "",
                         "status": "available",
-                        "tokenGemini": 0,
-                        "tokenClaude": 36,
-                        "tokenGpt": 36,
+                        "tokenGemini": null,
+                        "tokenClaude": null,
+                        "tokenGpt": null,
                         "reset_at": null,
                         "exhausted_models": []
             },
@@ -132,9 +133,9 @@ function loadAccounts() {
                         "theme": "gradient-purple",
                         "notes": "",
                         "status": "available",
-                        "tokenGemini": 0,
-                        "tokenClaude": 0,
-                        "tokenGpt": 0,
+                        "tokenGemini": null,
+                        "tokenClaude": null,
+                        "tokenGpt": null,
                         "reset_at": null,
                         "exhausted_models": []
             },
@@ -147,9 +148,9 @@ function loadAccounts() {
                         "theme": "gradient-sunset",
                         "notes": "",
                         "status": "available",
-                        "tokenGemini": 0,
-                        "tokenClaude": 0,
-                        "tokenGpt": 0,
+                        "tokenGemini": null,
+                        "tokenClaude": null,
+                        "tokenGpt": null,
                         "reset_at": null,
                         "exhausted_models": []
             },
@@ -162,9 +163,9 @@ function loadAccounts() {
                         "theme": "gradient-emerald",
                         "notes": "",
                         "status": "available",
-                        "tokenGemini": 0,
-                        "tokenClaude": 0,
-                        "tokenGpt": 0,
+                        "tokenGemini": null,
+                        "tokenClaude": null,
+                        "tokenGpt": null,
                         "reset_at": null,
                         "exhausted_models": []
             },
@@ -177,9 +178,9 @@ function loadAccounts() {
                         "theme": "gradient-amber",
                         "notes": "",
                         "status": "available",
-                        "tokenGemini": 0,
-                        "tokenClaude": 0,
-                        "tokenGpt": 0,
+                        "tokenGemini": null,
+                        "tokenClaude": null,
+                        "tokenGpt": null,
                         "reset_at": null,
                         "exhausted_models": []
             },
@@ -192,9 +193,9 @@ function loadAccounts() {
                         "theme": "gradient-cyber",
                         "notes": "",
                         "status": "available",
-                        "tokenGemini": 0,
-                        "tokenClaude": 0,
-                        "tokenGpt": 0,
+                        "tokenGemini": null,
+                        "tokenClaude": null,
+                        "tokenGpt": null,
                         "reset_at": null,
                         "exhausted_models": []
             },
@@ -207,9 +208,9 @@ function loadAccounts() {
                         "theme": "gradient-nordic",
                         "notes": "",
                         "status": "exhausted",
-                        "tokenGemini": 0,
-                        "tokenClaude": 0,
-                        "tokenGpt": 0,
+                        "tokenGemini": null,
+                        "tokenClaude": null,
+                        "tokenGpt": null,
                         "reset_at": "2026-09-06 23:58:08",
                         "exhausted_models": []
             },
@@ -222,9 +223,9 @@ function loadAccounts() {
                         "theme": "gradient-blue",
                         "notes": "",
                         "status": "exhausted",
-                        "tokenGemini": 0,
-                        "tokenClaude": 0,
-                        "tokenGpt": 0,
+                        "tokenGemini": null,
+                        "tokenClaude": null,
+                        "tokenGpt": null,
                         "reset_at": "2026-09-07 00:42:10",
                         "exhausted_models": []
             },
@@ -237,9 +238,9 @@ function loadAccounts() {
                         "theme": "gradient-purple",
                         "notes": "",
                         "status": "available",
-                        "tokenGemini": 0,
-                        "tokenClaude": 0,
-                        "tokenGpt": 0,
+                        "tokenGemini": null,
+                        "tokenClaude": null,
+                        "tokenGpt": null,
                         "reset_at": null,
                         "exhausted_models": []
             },
@@ -252,9 +253,9 @@ function loadAccounts() {
                         "theme": "gradient-sunset",
                         "notes": "",
                         "status": "available",
-                        "tokenGemini": 0,
-                        "tokenClaude": 0,
-                        "tokenGpt": 0,
+                        "tokenGemini": null,
+                        "tokenClaude": null,
+                        "tokenGpt": null,
                         "reset_at": null,
                         "exhausted_models": []
             },
@@ -267,9 +268,9 @@ function loadAccounts() {
                         "theme": "gradient-emerald",
                         "notes": "",
                         "status": "available",
-                        "tokenGemini": 0,
-                        "tokenClaude": 0,
-                        "tokenGpt": 0,
+                        "tokenGemini": null,
+                        "tokenClaude": null,
+                        "tokenGpt": null,
                         "reset_at": null,
                         "exhausted_models": []
             },
@@ -282,9 +283,9 @@ function loadAccounts() {
                         "theme": "gradient-amber",
                         "notes": "",
                         "status": "available",
-                        "tokenGemini": 0,
-                        "tokenClaude": 0,
-                        "tokenGpt": 0,
+                        "tokenGemini": null,
+                        "tokenClaude": null,
+                        "tokenGpt": null,
                         "reset_at": null,
                         "exhausted_models": []
             },
@@ -297,9 +298,9 @@ function loadAccounts() {
                         "theme": "gradient-cyber",
                         "notes": "",
                         "status": "available",
-                        "tokenGemini": 0,
-                        "tokenClaude": 0,
-                        "tokenGpt": 0,
+                        "tokenGemini": null,
+                        "tokenClaude": null,
+                        "tokenGpt": null,
                         "reset_at": null,
                         "exhausted_models": []
             }
