@@ -61,6 +61,7 @@ const elements = {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
+    checkAuth();
     loadAccounts();
     setupEventListeners();
     renderAccounts();
@@ -70,8 +71,25 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(fetchLive, 5000);
 });
 
+function safeGetStorage(key) {
+    try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+            return window.localStorage.getItem(key);
+        }
+    } catch (e) {}
+    return null;
+}
+
+function safeSetStorage(key, val) {
+    try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+            window.localStorage.setItem(key, val);
+        }
+    } catch (e) {}
+}
+
 function loadAccounts() {
-    const saved = localStorage.getItem('antigravity_gmail_switcher_accounts_v6');
+    const saved = safeGetStorage('antigravity_gmail_switcher_accounts_v6');
     let loaded = false;
     if (saved) {
         try {
@@ -288,12 +306,12 @@ function loadAccounts() {
 ];
         saveAccounts();
     }
-    state.activeAccountId = localStorage.getItem('antigravity_active_account_id') || 'tilab-aluno10';
+    state.activeAccountId = safeGetStorage('antigravity_active_account_id') || 'tilab-aluno10';
 }
 
 function saveAccounts() {
-    localStorage.setItem('antigravity_gmail_switcher_accounts_v6', JSON.stringify(state.accounts));
-    localStorage.setItem('antigravity_active_account_id', state.activeAccountId);
+    safeSetStorage('antigravity_gmail_switcher_accounts_v6', JSON.stringify(state.accounts));
+    safeSetStorage('antigravity_active_account_id', state.activeAccountId);
 }
 
 function showToast(message) {
@@ -541,7 +559,7 @@ function renderAccounts() {
 
         const card = document.createElement('div');
         card.className = `account-card ${isActive ? 'active-account' : ''} ${isBlocked ? 'blocked-account' : ''}`;
-        card.dataset.id = acc.id;
+        card.setAttribute('data-id', acc.id);
         card.style.setProperty('--theme-gradient', themeConfig.gradient);
         card.style.setProperty('--theme-glow', themeConfig.glow);
 
@@ -645,20 +663,34 @@ function renderAccounts() {
             </div>
         `;
 
-        card.querySelector('.btn-switch').addEventListener('click', (e) => {
+        const btnSwitch = card.querySelector('.btn-switch');
+        if (btnSwitch) btnSwitch.addEventListener('click', (e) => {
             e.stopPropagation();
-            switchToAccount(e.currentTarget.dataset.email);
+            const email = e.currentTarget.getAttribute('data-email');
+            if (email) switchToAccount(email);
         });
-        card.querySelector('.btn-edit').addEventListener('click', (e) => { e.stopPropagation(); openModal(acc.id); });
-        card.querySelector('.btn-delete').addEventListener('click', (e) => {
+
+        const btnEdit = card.querySelector('.btn-edit');
+        if (btnEdit) btnEdit.addEventListener('click', (e) => { e.stopPropagation(); openModal(acc.id); });
+
+        const btnDelete = card.querySelector('.btn-delete');
+        if (btnDelete) btnDelete.addEventListener('click', (e) => {
             e.stopPropagation();
             if (confirm(`Remover "${acc.email}"?`)) deleteAccount(acc.id);
         });
-        card.querySelector('.btn-activate').addEventListener('click', (e) => {
-            e.stopPropagation(); setActiveAccount(e.currentTarget.dataset.id);
+
+        const btnActivate = card.querySelector('.btn-activate');
+        if (btnActivate) btnActivate.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = e.currentTarget.getAttribute('data-id');
+            if (id) setActiveAccount(id);
         });
-        card.querySelector('.status-pill').addEventListener('click', (e) => {
-            e.stopPropagation(); toggleAccountStatus(e.currentTarget.dataset.id);
+
+        const statusPill = card.querySelector('.status-pill');
+        if (statusPill) statusPill.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = e.currentTarget.getAttribute('data-id');
+            if (id) toggleAccountStatus(id);
         });
 
 
@@ -782,7 +814,7 @@ function fetchLive() {
                 }
                 if (detectedAcc && detectedAcc.id !== state.activeAccountId) {
                     state.activeAccountId = detectedAcc.id;
-                    localStorage.setItem('antigravity_active_account_id', state.activeAccountId);
+                    safeSetStorage('antigravity_active_account_id', state.activeAccountId);
                 }
             }
 
@@ -815,8 +847,8 @@ function fetchLive() {
     // Save active machine details
     if (data.machine) {
         state.currentMachine = data.machine;
-        if (data.machine.hostname) localStorage.setItem('antigravity_last_hostname', data.machine.hostname);
-        if (data.machine.username) localStorage.setItem('antigravity_last_username', data.machine.username);
+        if (data.machine.hostname) safeSetStorage('antigravity_last_hostname', data.machine.hostname);
+        if (data.machine.username) safeSetStorage('antigravity_last_username', data.machine.username);
         if (!state.selectedMachineId) {
             state.selectedMachineId = data.machine.machine_id;
         }
@@ -920,8 +952,8 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
             machineOptions += `<option value="${m.machine_id}" ${isSel}>💻 ${m.hostname}${userPart}${activeMark}</option>`;
         });
     } else {
-        const savedHost = localStorage.getItem('antigravity_last_hostname') || (state.currentMachine && state.currentMachine.hostname);
-        const savedUser = localStorage.getItem('antigravity_last_username') || (state.currentMachine && state.currentMachine.username);
+        const savedHost = safeGetStorage('antigravity_last_hostname') || (state.currentMachine && state.currentMachine.hostname);
+        const savedUser = safeGetStorage('antigravity_last_username') || (state.currentMachine && state.currentMachine.username);
         const curHost = savedHost || 'Este Computador';
         const curUser = savedUser ? ` (${savedUser})` : '';
         machineOptions = `<option value="local">💻 ${curHost}${curUser}</option>`;
@@ -1173,7 +1205,7 @@ function doLogin(email, pass) {
 }
 
 function applyLogin(overlay) {
-    localStorage.setItem('antigravity_authenticated', 'true');
+    safeSetStorage('antigravity_authenticated', 'true');
     if (overlay) overlay.style.display = 'none';
     showToast('Acesso concedido!');
 }
@@ -1184,23 +1216,23 @@ function checkAuth() {
     // 0. Local machine access (localhost / 127.0.0.1) NEVER requires login!
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     if (isLocal) {
-        localStorage.setItem('antigravity_authenticated', 'true');
+        safeSetStorage('antigravity_authenticated', 'true');
         if (overlay) overlay.style.display = 'none';
         return;
     }
 
     // 1. Try auto-login from saved credentials or authenticated flag
-    if (localStorage.getItem('antigravity_authenticated') === 'true') {
+    if (safeGetStorage('antigravity_authenticated') === 'true') {
         if (overlay) overlay.style.display = 'none';
         return;
     }
 
     try {
-        const saved = localStorage.getItem(AUTH_CRED_KEY);
+        const saved = safeGetStorage(AUTH_CRED_KEY);
         if (saved) {
             const { e, p } = JSON.parse(saved);
             if (doLogin(e, p)) {
-                localStorage.setItem('antigravity_authenticated', 'true');
+                safeSetStorage('antigravity_authenticated', 'true');
                 if (overlay) overlay.style.display = 'none';
                 return;
             }
@@ -1239,7 +1271,7 @@ function checkAuth() {
             const errDiv = document.getElementById('login-error');
 
             if (doLogin(email, pass)) {
-                localStorage.setItem(AUTH_CRED_KEY, JSON.stringify({ e: email.trim(), p: pass.trim() }));
+                safeSetStorage(AUTH_CRED_KEY, JSON.stringify({ e: email.trim(), p: pass.trim() }));
                 applyLogin(overlay);
                 if (errDiv) errDiv.style.display = 'none';
             } else {
