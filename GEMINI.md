@@ -17,6 +17,7 @@ Se a informação não está disponível por leitura direta de arquivo, execuç�
 - **Proibido: inventar.** Qualquer dado que não seja lido de uma fonte real (arquivo, stdout, endpoint HTTP) não existe.
 - **Proibido: alterar ou desfazer ordens do usuário sem permissão.** Nunca alterar textos, rótulos (como mudar "Consumo" para "Cota Restante"), botões, layout ou regras estabelecidas pelo usuário sem perguntar primeiro e receber autorização prévia e expressa.
 - **Proibido: assumir 100% ou 0% quando o consumo de token não for medido.** Quando a medição de tokens não for obtida ou estiver ausente, exibir obrigatoriamente "Sem informação".
+- **Proibido: usar serviços de terceiros sem autorização prévia.** Nunca integrar, fazer requisições ou enviar dados para qualquer serviço de terceiros (APIs externas, bancos de dados públicos ou terceirizados) sem consultar o usuário primeiro e obter autorização prévia e expressa.
 
 ## O que fazer quando a informação está ausente
 
