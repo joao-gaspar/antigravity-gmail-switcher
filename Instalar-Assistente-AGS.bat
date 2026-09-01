@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-set AGS_VER=v2.5.0
+set AGS_VER=v2.5.1
 title Assistente do AGS %AGS_VER% - Instalador Automatico
 color 0A
 cls
@@ -14,19 +14,19 @@ echo   Configurando o monitoramento do Antigravity nesta maquina...
 echo   Por favor, aguarde alguns segundos.
 echo.
 
-:: Create local dir for AGS (no internet zone restrictions here)
+:: Create local dir for AGS
 set AGS_LOCAL=%APPDATA%\AGS
 if not exist "%AGS_LOCAL%" mkdir "%AGS_LOCAL%"
 
-:: Write setup.ps1 locally (no download = no Zone.Identifier = no AppLocker block)
 echo   [1/3] Preparando instalador...
 set SETUP_FILE=%AGS_LOCAL%\setup.ps1
+set LOG_FILE=%AGS_LOCAL%\install.log
 
 (
 echo $OutputEncoding = [System.Text.Encoding]::UTF8
 echo [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 echo $ErrorActionPreference = 'Continue'
-echo $AGS_VERSION = "2.5.0"
+echo $AGS_VERSION = "2.5.1"
 echo Write-Host "`n[AGS] INICIANDO SETUP DO AGS v$AGS_VERSION" -ForegroundColor Cyan
 echo.
 echo $destDir = "$env:USERPROFILE\.gemini\antigravity-ide\scratch\gmail-switcher"
@@ -52,7 +52,7 @@ echo.
 echo if (-not (Test-Path "$skillDir\accounts.json"^)^) {
 echo     $aUrl = "$baseUrl/accounts.json"
 echo     try { curl.exe -s -L --max-time 20 -o "$skillDir\accounts.json" $aUrl } catch {}
-echo     if (-not $ok^) { '{"accounts":[]}' ^| Out-File -FilePath "$skillDir\accounts.json" -Encoding utf8 }
+echo     if (-not (Test-Path "$skillDir\accounts.json"^)^) { '{"accounts":[]}' ^| Out-File -FilePath "$skillDir\accounts.json" -Encoding utf8 }
 echo }
 echo.
 echo $taskName = "AntigravityServerWatchdog"
@@ -103,8 +103,8 @@ echo     }
 echo }
 ) > "%SETUP_FILE%"
 
-echo   [2/3] Executando instalador...
-powershell -NoProfile -ExecutionPolicy Bypass -File "%SETUP_FILE%"
+echo   [2/3] Executando instalador (Log em %LOG_FILE%)...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%SETUP_FILE%" 2>&1 | powershell -NoProfile -Command "Tee-Object -FilePath '%LOG_FILE%'"
 
 echo.
 echo   [3/3] Verificando servidor...
@@ -112,10 +112,10 @@ powershell -NoProfile -Command "[Console]::OutputEncoding=[System.Text.Encoding]
 
 echo.
 echo  ========================================================
-echo    [OK] INSTALACAO DO AGS %AGS_VER% CONCLUIDA COM SUCESSO!
+echo    [OK] CONCLUIDO! LOG SALVO EM: %LOG_FILE%
 echo  ========================================================
 echo.
-echo   O Assistente do AGS ja esta ativo nesta maquina.
-echo   Pressione qualquer tecla para fechar esta janela e recarregar a Vercel.
+echo   Pressione QUALQUER TECLA para fechar esta janela.
 echo.
-pause
+pause >nul
+
