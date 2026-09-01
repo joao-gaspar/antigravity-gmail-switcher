@@ -48,12 +48,21 @@ End Sub
 
 Function IsServerRunning()
     On Error Resume Next
-    Dim oHTTP
-    Set oHTTP = CreateObject("MSXML2.ServerXMLHTTP.6.0")
-    oHTTP.setTimeouts 2000, 2000, 2000, 2000
-    oHTTP.open "GET", "http://127.0.0.1:8000/api/status", False
-    oHTTP.send
-    IsServerRunning = (Err.Number = 0 And oHTTP.status = 200)
+    Dim oHTTP, ports, i, p
+    ports = Array(8999, 8998, 8997, 8996, 8995, 8000)
+    For i = 0 To UBound(ports)
+        p = ports(i)
+        Err.Clear
+        Set oHTTP = CreateObject("MSXML2.ServerXMLHTTP.6.0")
+        oHTTP.setTimeouts 1500, 1500, 1500, 1500
+        oHTTP.open "GET", "http://127.0.0.1:" & p & "/api/status", False
+        oHTTP.send
+        If Err.Number = 0 And oHTTP.status = 200 Then
+            IsServerRunning = True
+            Exit Function
+        End If
+    Next
+    IsServerRunning = False
     On Error GoTo 0
 End Function
 

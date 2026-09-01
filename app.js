@@ -736,14 +736,18 @@ function fetchSingleEndpoint(url) {
 
 function fetchLive() {
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const ports = [8999, 8998, 8997, 8996, 8995, 8000];
     
     let fetchPromise;
     if (isLocal) {
         fetchPromise = fetchSingleEndpoint('/api/live');
     } else {
-        // Use 127.0.0.1 first to avoid Windows IPv6 (::1) DNS resolution delays
-        fetchPromise = fetchSingleEndpoint('http://127.0.0.1:8000/api/live')
-            .catch(() => fetchSingleEndpoint('http://localhost:8000/api/live'));
+        // Try candidate ports dynamically: 8999 -> 8998 -> 8997 -> 8996 -> 8995 -> 8000
+        let p = Promise.reject();
+        ports.forEach(port => {
+            p = p.catch(() => fetchSingleEndpoint(`http://127.0.0.1:${port}/api/live`));
+        });
+        fetchPromise = p;
     }
 
     fetchPromise
@@ -850,9 +854,10 @@ function fetchLive() {
                 saveAccounts();
             }
 
-            // Fetch local & cloud synced machines
-            const machinesUrl  = isLocal ? '/api/machines'  : 'http://127.0.0.1:8000/api/machines';
-            const snapshotsUrl = isLocal ? '/api/snapshots' : 'http://127.0.0.1:8000/api/snapshots';
+            // Fetch local & cloud synced machines using discovered active port
+            const activePort = data.activePort || 8999;
+            const machinesUrl  = isLocal ? '/api/machines'  : `http://127.0.0.1:${activePort}/api/machines`;
+            const snapshotsUrl = isLocal ? '/api/snapshots' : `http://127.0.0.1:${activePort}/api/snapshots`;
 
             Promise.all([
                 fetch(machinesUrl).then(r => r.json()).catch(() => []),
