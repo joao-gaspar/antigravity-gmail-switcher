@@ -1,32 +1,9 @@
 from http.server import BaseHTTPRequestHandler
 import json
-import base64
-import urllib.request
 
-# Persistent global cloud store backed by keyvalue.immanuel.co
-_machines_store = {}
-_accounts_store = {}
-_known_keys = ["mac_joaogaspar_pc", "mac_laptop_21i6oq39", "mac_ebbim", "mac_joaogaspar"]
-
-def _sync_from_global_kv():
-    for k in _known_keys:
-        try:
-            url = f"https://keyvalue.immanuel.co/api/KeyVal/GetValue/ags_sync_v1/{k}"
-            req = urllib.request.Request(url, headers={"User-Agent": "AGS-Sync/1.0"})
-            with urllib.request.urlopen(req, timeout=2) as resp:
-                raw = resp.read().decode('utf-8').strip('"').strip()
-                if raw and raw != "Not Found" and len(raw) > 5:
-                    raw_b64 = raw.replace('-', '+').replace('_', '/')
-                    padding = len(raw_b64) % 4
-                    if padding:
-                        raw_b64 += '=' * (4 - padding)
-                    decoded = base64.b64decode(raw_b64).decode('utf-8')
-                    m_data = json.loads(decoded)
-                    mid = m_data.get("machine_id")
-                    if mid:
-                        _machines_store[mid] = m_data
-        except Exception:
-            pass
+# In-memory cloud stores — reset on cold start, replenished by frequent polls
+_machines_store = {}   # machine_id -> machine snapshot
+_accounts_store = {}   # email (lower) -> { email, tokenGemini, tokenClaude, tokenGpt, status, reset_at }
 
 class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
@@ -56,9 +33,6 @@ class handler(BaseHTTPRequestHandler):
                     "model_quotas":   data.get("model_quotas", {}),
                     "last_seen":      data.get("last_seen"),
                 }
-                k = "mac_" + mid.replace("mac-", "").replace('-', '_').replace('.', '_')
-                if k not in _known_keys:
-                    _known_keys.append(k)
 
             for acc in data.get("accounts", []):
                 email = acc.get("email", "").strip().lower()
@@ -75,8 +49,6 @@ class handler(BaseHTTPRequestHandler):
                     "updated_at":  data.get("last_seen", ""),
                 }
 
-            _sync_from_global_kv()
-
             resp = {
                 "status":   "ok",
                 "machines": list(_machines_store.values()),
@@ -87,7 +59,6 @@ class handler(BaseHTTPRequestHandler):
             self._send_json(500, {"error": str(e)})
 
     def do_GET(self):
-        _sync_from_global_kv()
         resp = {
             "status":   "ok",
             "machines": list(_machines_store.values()),
