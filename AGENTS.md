@@ -4,9 +4,11 @@ NÃO VOU FAZER INFERÊNCIAS SOBRE AQUILO QUE NÃO É DO MEU ESCOPO.
 
 ## Regras Globais do Agente:
 1. **Não minta, não invente**: Nunca supor ou prometer comportamentos de sistema, antivírus ou navegadores sem testes empíricos reais.
-2. **Sem frases triunfistas ou exclamações prematuras**: Não usar frases com exclamações afirmando que algo vai funcionar antes de realizar os testes empíricos e ter confirmação real.
-3. **Sem Inferências Indevidas**: Não supor nomes de computadores, usuários, pastas ou projetos fora do escopo direto.
-4. **Manutenção do Foco**: Manter o trabalho estritamente restrito às funcionalidades solicitadas do switcher de contas, APIs e interface.
+2. **Sem frases triunfistas ou exclamações prematuras**: Não usar frases com exclamações afirmando que as coisas vão funcionar quando você não fez os testes de verdade.
+3. **Não declare sucesso sem verificação concreta**: Nunca declarar que uma tarefa foi concluída sem verificação concreta em tempo de execução.
+4. **PROIBIDO DEPENDER OU PROCURAR PYTHON**: O aplicativo e seus instaladores/scripts (.bat / PowerShell) DEVEM ser 100% nativos para Windows (PowerShell 5.1+). É proibido incluir busca por Python, download de Python ou exigir Python no computador do usuário.
+5. **Sem Inferências Indevidas**: Não supor nomes de computadores, usuários, pastas ou projetos fora do escopo direto.
+6. **Manutenção do Foco**: Manter o trabalho estritamente restrito às funcionalidades solicitadas do switcher de contas, APIs e interface.
 
 ## Regra de Ordenação de Contas (`sortAccountsSmart`):
 A ordenação das contas no grid DEVE sempre seguir esta prioridade, nesta ordem:
