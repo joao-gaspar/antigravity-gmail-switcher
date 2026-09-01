@@ -563,14 +563,21 @@ function renderAccounts() {
     // Selected machine active email for UI badges
     let selectedActiveEmail = null;
     const selectedMachineObj = state.machines && state.machines.find(m => m.machine_id === state.selectedMachineId);
+    const isViewingRemoteMachine = !!state.selectedMachineId;
 
     if (selectedMachineObj && selectedMachineObj.active_email) {
+        // Remote machine has cloud data — use it
         selectedActiveEmail = selectedMachineObj.active_email;
-    } else if (state.currentMachine && state.currentMachine.active_email) {
-        selectedActiveEmail = state.currentMachine.active_email;
-    } else {
-        selectedActiveEmail = state.accounts.find(a => a.id === state.activeAccountId)?.email;
+    } else if (!isViewingRemoteMachine) {
+        // No machine explicitly selected — show local machine data
+        if (state.currentMachine && state.currentMachine.active_email) {
+            selectedActiveEmail = state.currentMachine.active_email;
+        } else {
+            selectedActiveEmail = state.accounts.find(a => a.id === state.activeAccountId)?.email;
+        }
     }
+    // If viewing a remote machine that has no cloud data yet: selectedActiveEmail stays null
+    // (no card will be marked active, which is correct — we don't know what's active there)
 
     sorted.forEach((acc) => {
         const isActive = selectedActiveEmail && acc.email && acc.email.toLowerCase() === selectedActiveEmail.toLowerCase();
@@ -986,17 +993,22 @@ function fetchCloudSync() {
                     };
 
                     if (cloudActiveEmail) {
-                        let detectedAcc = state.accounts.find(a => a.email.toLowerCase() === cloudActiveEmail.toLowerCase());
-                        if (detectedAcc) {
-                            state.activeAccountId = detectedAcc.id;
-                            detectedAcc.tokenGemini = state.liveQuota.gemini;
-                            detectedAcc.tokenClaude = state.liveQuota.claude;
-                            detectedAcc.tokenGpt    = state.liveQuota.gpt;
-                            detectedAcc.lastMeasuredAt = new Date().toISOString();
-                            if (state.liveQuota.gemini === 0 && state.liveQuota.claude === 0 && state.liveQuota.gpt === 0) {
-                                detectedAcc.status = 'exhausted';
+                        // Only mark as active and write live quotas if this machine IS the selected machine
+                        const isSelectedMachine = (selMachine.machine_id === state.selectedMachineId) ||
+                                                  (state.machines.length === 1);
+                        if (isSelectedMachine) {
+                            let detectedAcc = state.accounts.find(a => a.email.toLowerCase() === cloudActiveEmail.toLowerCase());
+                            if (detectedAcc) {
+                                state.activeAccountId = detectedAcc.id;
+                                detectedAcc.tokenGemini = state.liveQuota.gemini;
+                                detectedAcc.tokenClaude = state.liveQuota.claude;
+                                detectedAcc.tokenGpt    = state.liveQuota.gpt;
+                                detectedAcc.lastMeasuredAt = new Date().toISOString();
+                                if (state.liveQuota.gemini === 0 && state.liveQuota.claude === 0 && state.liveQuota.gpt === 0) {
+                                    detectedAcc.status = 'exhausted';
+                                }
+                                saveAccounts();
                             }
-                            saveAccounts();
                         }
                     }
                 }
