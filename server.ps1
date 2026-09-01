@@ -177,7 +177,7 @@ while ($listener.IsListening) {
             $buffer = [System.Text.Encoding]::UTF8.GetBytes($json)
             $response.ContentType = "application/json; charset=utf-8"
 
-            # Direct PowerShell Cloud Push to Vercel (bypasses browser HTTPS/HTTP Mixed Content restrictions)
+            # Direct PowerShell Cloud Push to Global KV Store (bypasses Vercel cold-start memory resets)
             if ($global:lastCloudSync -eq $null -or ((Get-Date) - $global:lastCloudSync).TotalSeconds -ge 4) {
                 $global:lastCloudSync = Get-Date
                 try {
@@ -188,8 +188,13 @@ while ($listener.IsListening) {
                         active_email = $agentEmail
                         model_quotas = $modelQuotas
                         last_seen    = (Get-Date).ToString("o")
-                    } | ConvertTo-Json -Depth 6
+                    } | ConvertTo-Json -Depth 6 -Compress
 
+                    $bytes = [System.Text.Encoding]::UTF8.GetBytes($syncPayload)
+                    $b64 = [Convert]::ToBase64String($bytes).Replace('+','-').Replace('/','_').Replace('=','')
+                    $machKey = "mac_" + $env:COMPUTERNAME.ToLower().Replace('-','_').Replace('.','_')
+
+                    $null = Invoke-RestMethod -Uri "https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/ags_sync_v1/$machKey/$b64" -Method POST -Headers @{ "Content-Length" = "0" } -TimeoutSec 4
                     $null = Invoke-RestMethod -Uri "https://antigravity-gmail-switcher.vercel.app/api/sync" -Method POST -Body $syncPayload -ContentType "application/json" -TimeoutSec 4
                 } catch {}
             }
