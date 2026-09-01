@@ -61,7 +61,6 @@ const elements = {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    checkAuth();
     loadAccounts();
     setupEventListeners();
     renderAccounts();
