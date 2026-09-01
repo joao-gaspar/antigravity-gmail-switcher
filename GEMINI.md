@@ -16,6 +16,7 @@ Se a informação não está disponível por leitura direta de arquivo, execuç�
 - **Proibido: extrapolação.** O que é verdade em um contexto não é assumido como verdade em outro sem nova verificação.
 - **Proibido: inventar.** Qualquer dado que não seja lido de uma fonte real (arquivo, stdout, endpoint HTTP) não existe.
 - **Proibido: alterar ou desfazer ordens do usuário sem permissão.** Nunca alterar textos, rótulos (como mudar "Consumo" para "Cota Restante"), botões, layout ou regras estabelecidas pelo usuário sem perguntar primeiro e receber autorização prévia e expressa.
+- **Proibido: assumir 100% ou 0% quando o consumo de token não for medido.** Quando a medição de tokens não for obtida ou estiver ausente, exibir obrigatoriamente "Sem informação".
 
 ## O que fazer quando a informação está ausente
 

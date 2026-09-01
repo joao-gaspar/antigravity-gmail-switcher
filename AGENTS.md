@@ -10,6 +10,7 @@ NÃO VOU FAZER INFERÊNCIAS SOBRE AQUILO QUE NÃO É DO MEU ESCOPO.
 5. **Sem Inferências Indevidas**: Não supor nomes de computadores, usuários, pastas ou projetos fora do escopo direto.
 6. **Manutenção do Foco**: Manter o trabalho estritamente restrito às funcionalidades solicitadas do switcher de contas, APIs e interface.
 7. **PROIBIDO DESFAZER OU ALTERAR ORDENS DO USUÁRIO SEM PERMISSÃO**: É estritamente proibido alterar textos, rótulos, botões ou qualquer escolha/diretriz definida pelo usuário sem perguntar primeiro e obter autorização expressa.
+8. **PROIBIDO INVENTAR COTAS OU CONSUMO DE TOKEN**: Se o consumo de token de um modelo não puder ser medido ou obtido, é proibido exibir 100% ou 0%. Deve-se obrigatoriamente exibir o texto "Sem informação".
 
 ## Regra de Ordenação de Contas (`sortAccountsSmart`):
 A ordenação das contas no grid DEVE sempre seguir esta prioridade, nesta ordem:

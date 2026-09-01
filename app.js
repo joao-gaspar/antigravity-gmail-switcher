@@ -603,12 +603,12 @@ function renderAccounts() {
 
         // Live Quota Bars: pull either from local live state OR from database snapshots for the selected machine
         const getFrac = val => {
-            if (val === undefined || val === null || isNaN(val)) return 0.0;
+            if (val === undefined || val === null || isNaN(val)) return null;
             const n = Number(val);
             return n > 1 ? n / 100 : Math.max(0, Math.min(1, n));
         };
 
-        let qG = 0.0, qC = 0.0, qP = 0.0;
+        let qG = null, qC = null, qP = null;
 
         if (isBlocked) {
             qG = 0.0;
@@ -624,22 +624,28 @@ function renderAccounts() {
                 (!state.selectedMachineId || s.machine_id === state.selectedMachineId)
             );
             if (accSnap) {
-                qG = getFrac((accSnap.gemini_pct ?? 0) / 100);
-                qC = getFrac((accSnap.claude_pct ?? 0) / 100);
-                qP = getFrac((accSnap.gpt_pct ?? 0) / 100);
-            } else if (acc.tokenGemini !== undefined || acc.tokenClaude !== undefined) {
+                qG = getFrac(accSnap.gemini_pct !== undefined ? accSnap.gemini_pct / 100 : null);
+                qC = getFrac(accSnap.claude_pct !== undefined ? accSnap.claude_pct / 100 : null);
+                qP = getFrac(accSnap.gpt_pct !== undefined ? accSnap.gpt_pct / 100 : null);
+            } else if (acc.tokenGemini !== undefined || acc.tokenClaude !== undefined || acc.tokenGpt !== undefined) {
                 qG = getFrac(acc.tokenGemini);
                 qC = getFrac(acc.tokenClaude);
                 qP = getFrac(acc.tokenGpt);
-            } else {
-                qG = 0.0;
-                qC = 0.0;
-                qP = 0.0;
             }
         }
 
         const renderBar = (frac, label) => {
-            const safeFrac = isNaN(frac) ? 1.0 : Math.max(0, Math.min(1, frac));
+            if (frac === null || frac === undefined) {
+                return `
+                <div style="display:flex; align-items:center; gap:4px; margin-bottom:2px;">
+                    <span style="font-size:0.58rem; color:#9ca3af; min-width:68px; font-weight:600;">${label}</span>
+                    <div style="flex:1; height:4px; background:rgba(255,255,255,0.08); border-radius:2px; overflow:hidden;">
+                        <div style="height:100%; width:0%; background:#9ca3af; border-radius:2px;"></div>
+                    </div>
+                    <span style="font-size:0.52rem; color:#9ca3af; width:65px; text-align:right; font-family:sans-serif; font-weight:500;">Sem informação</span>
+                </div>`;
+            }
+            const safeFrac = Math.max(0, Math.min(1, frac));
             const pct = Math.round(safeFrac * 100);
             const col = pct > 50 ? '#34d399' : pct > 15 ? '#f59e0b' : '#ef4444';
             return `
@@ -652,7 +658,7 @@ function renderAccounts() {
             </div>`;
         };
 
-        const qCG = Math.max(qC, qP);
+        const qCG = (qC !== null || qP !== null) ? Math.max(qC ?? 0, qP ?? 0) : null;
         const quotaBarsHtml = `
         <div style="margin-top:4px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.06);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
@@ -852,29 +858,31 @@ function fetchLive() {
                 }
             }
 
-            let geminiMax = 0.0, claudeMin = 0.0, gptMin = 0.0;
+            let geminiMax = null, claudeMin = null, gptMin = null;
             let hasGemini = false, hasClaude = false, hasGpt = false;
 
             if (modelQuotas && typeof modelQuotas === 'object' && Object.keys(modelQuotas).length > 0) {
                 for (const [lbl, info] of Object.entries(modelQuotas)) {
-                    const rem = typeof info === 'object' ? (info.remaining ?? 0.0) : (typeof info === 'number' ? info : 0.0);
-                    if (/gemini/i.test(lbl)) {
-                        geminiMax = hasGemini ? Math.max(geminiMax, rem) : rem;
-                        hasGemini = true;
-                    } else if (/claude/i.test(lbl)) {
-                        claudeMin = hasClaude ? Math.min(claudeMin, rem) : rem;
-                        hasClaude = true;
-                    } else if (/gpt|openai/i.test(lbl)) {
-                        gptMin = hasGpt ? Math.min(gptMin, rem) : rem;
-                        hasGpt = true;
+                    const rem = typeof info === 'object' ? info.remaining : (typeof info === 'number' ? info : null);
+                    if (rem !== null && rem !== undefined) {
+                        if (/gemini/i.test(lbl)) {
+                            geminiMax = hasGemini ? Math.max(geminiMax, rem) : rem;
+                            hasGemini = true;
+                        } else if (/claude/i.test(lbl)) {
+                            claudeMin = hasClaude ? Math.min(claudeMin, rem) : rem;
+                            hasClaude = true;
+                        } else if (/gpt|openai/i.test(lbl)) {
+                            gptMin = hasGpt ? Math.min(gptMin, rem) : rem;
+                            hasGpt = true;
+                        }
                     }
                 }
             }
 
             state.liveQuota = {
-                gemini: hasGemini ? geminiMax : 0.0,
-                claude: hasClaude ? claudeMin : 0.0,
-                gpt:    hasGpt    ? gptMin    : 0.0
+                gemini: hasGemini ? geminiMax : null,
+                claude: hasClaude ? claudeMin : null,
+                gpt:    hasGpt    ? gptMin    : null
             };
             state.liveModelQuotas = modelQuotas;
             state.liveSuggestEmail = suggestEmail;
@@ -885,10 +893,10 @@ function fetchLive() {
                 const liveAcc = state.accounts.find(a =>
                     a.email && a.email.toLowerCase() === agentEmail.toLowerCase());
                 if (liveAcc) {
-                    liveAcc.tokenGemini = Number(state.liveQuota.gemini) || 0.0;
-                    liveAcc.tokenClaude = Number(state.liveQuota.claude) || 0.0;
-                    liveAcc.tokenGpt    = Number(state.liveQuota.gpt)    || 0.0;
-                    if (liveAcc.tokenGemini === 0 && liveAcc.tokenClaude === 0 && liveAcc.tokenGpt === 0) {
+                    liveAcc.tokenGemini = state.liveQuota.gemini;
+                    liveAcc.tokenClaude = state.liveQuota.claude;
+                    liveAcc.tokenGpt    = state.liveQuota.gpt;
+                    if (state.liveQuota.gemini === 0 && state.liveQuota.claude === 0 && state.liveQuota.gpt === 0) {
                         liveAcc.status = 'exhausted';
                     }
                     saveAccounts();
