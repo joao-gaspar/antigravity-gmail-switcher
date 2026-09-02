@@ -32,9 +32,9 @@ function Get-LanguageServerStatus {
         $rawProcs = Get-CimInstance Win32_Process | Where-Object { $_.Name -like 'language_server*' }
         if (-not $rawProcs) { return $null }
 
-        # Sort deterministically: active IDE processes (--parent_pipe_path or --enable_lsp) first, then highest ProcessId (newest process)
+        # Prioritize Agente process (WITHOUT --enable_lsp) over IDE Geral (with --enable_lsp), matching gmail-switcher.ps1
         $procs = $rawProcs | Sort-Object @{Expression={
-            if ($_.CommandLine -and ($_.CommandLine.Contains("--parent_pipe_path") -or $_.CommandLine.Contains("--enable_lsp"))) { 0 } else { 1 }
+            if ($_.CommandLine -and -not $_.CommandLine.Contains("--enable_lsp")) { 0 } else { 1 }
         }}, @{Expression={[long]$_.ProcessId}; Descending=$true}
 
         $netstat = netstat -ano 2>$null

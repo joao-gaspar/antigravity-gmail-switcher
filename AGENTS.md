@@ -12,6 +12,7 @@ NÃO VOU FAZER INFERÊNCIAS SOBRE AQUILO QUE NÃO É DO MEU ESCOPO.
 7. **PROIBIDO DESFAZER OU ALTERAR ORDENS DO USUÁRIO SEM PERMISSÃO**: É estritamente proibido alterar textos, rótulos, botões ou qualquer escolha/diretriz definida pelo usuário sem perguntar primeiro e obter autorização expressa.
 8. **PROIBIDO INVENTAR COTAS OU CONSUMO DE TOKEN**: Se o consumo de token de um modelo não puder ser medido ou obtido, é proibido exibir 100% ou 0%. Deve-se obrigatoriamente exibir o texto "Sem informação".
 9. **PROIBIDO USAR SERVIÇOS DE TERCEIROS SEM CONSULTAR O USUÁRIO**: É estritamente proibido utilizar, integrar, enviar dados ou fazer chamadas para qualquer API ou serviço de terceiros sem perguntar primeiro e receber autorização prévia e expressa do usuário.
+10. **IDENTIFICAÇÃO DETERMINÍSTICA DA CONTA DO AGENTE**: A conta ativa do AGENTE é obtida ESTRITAMENTE do processo `language_server` que NÃO possui a flag `--enable_lsp` (`HasLsp = false`). O processo COM `--enable_lsp` pertence à 'IDE Geral' e não representa o Agente.
 
 ## Regra de Ordenação de Contas (`sortAccountsSmart`):
 A ordenação das contas no grid DEVE sempre seguir esta prioridade, nesta ordem:
