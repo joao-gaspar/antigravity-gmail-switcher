@@ -573,10 +573,10 @@ function renderAccounts() {
     elements.accountsGrid.classList.remove('hidden');
 
     // Selected machine active email for UI badges and top-of-grid pinning
+    const selectedMachineObj = state.machines && Array.isArray(state.machines) &&
+        state.machines.find(m => m && m.machine_id === state.selectedMachineId);
     let selectedActiveEmail = getActiveEmailForMachine(state.selectedMachineId);
     const sorted = sortAccountsSmart(filtered);
-    // If viewing a remote machine that has no cloud data yet: selectedActiveEmail stays null
-    // (no card will be marked active, which is correct — we don't know what's active there)
 
     sorted.forEach((acc) => {
         const isActive = selectedActiveEmail && acc.email && acc.email.toLowerCase() === selectedActiveEmail.toLowerCase();
