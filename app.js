@@ -453,14 +453,14 @@ function sortAccountsSmart(accountsList) {
 
     return [...accountsList].sort((a, b) => {
         // 0. Active account always first
-        const aActive = activeEmailForSel && a.email === activeEmailForSel;
-        const bActive = activeEmailForSel && b.email === activeEmailForSel;
+        const aActive = activeEmailForSel && a.email && a.email.toLowerCase() === activeEmailForSel.toLowerCase();
+        const bActive = activeEmailForSel && b.email && b.email.toLowerCase() === activeEmailForSel.toLowerCase();
         if (aActive && !bActive) return -1;
         if (!aActive && bActive) return 1;
 
         // 1. Suggested account second
-        const aSuggest = suggestEmailForSel && a.email === suggestEmailForSel;
-        const bSuggest = suggestEmailForSel && b.email === suggestEmailForSel;
+        const aSuggest = suggestEmailForSel && a.email && a.email.toLowerCase() === suggestEmailForSel.toLowerCase();
+        const bSuggest = suggestEmailForSel && b.email && b.email.toLowerCase() === suggestEmailForSel.toLowerCase();
         if (aSuggest && !bSuggest) return -1;
         if (!aSuggest && bSuggest) return 1;
 
@@ -993,9 +993,9 @@ function fetchCloudSync() {
                     };
 
                     if (cloudActiveEmail) {
-                        // Only mark as active and write live quotas if this machine IS the selected machine
-                        const isSelectedMachine = (selMachine.machine_id === state.selectedMachineId) ||
-                                                  (state.machines.length === 1);
+                        // Only mark as active and write live quotas if no machine is selected yet or if this machine IS the selected machine
+                        const isSelectedMachine = (!state.selectedMachineId) ||
+                                                  (selMachine.machine_id === state.selectedMachineId);
                         if (isSelectedMachine) {
                             let detectedAcc = state.accounts.find(a => a.email.toLowerCase() === cloudActiveEmail.toLowerCase());
                             if (detectedAcc) {
