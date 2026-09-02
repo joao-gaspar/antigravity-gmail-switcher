@@ -29,8 +29,13 @@ Write-Host "AGS Server running on http://127.0.0.1:$activePort/"
 # Helper for probing LanguageServer
 function Get-LanguageServerStatus {
     try {
-        $procs = Get-CimInstance Win32_Process | Where-Object { $_.Name -like 'language_server*' } | Sort-Object CreationDate -Descending
-        if (-not $procs) { return $null }
+        $rawProcs = Get-CimInstance Win32_Process | Where-Object { $_.Name -like 'language_server*' }
+        if (-not $rawProcs) { return $null }
+
+        # Sort deterministically: active IDE processes (--parent_pipe_path or --enable_lsp) first, then highest ProcessId (newest process)
+        $procs = $rawProcs | Sort-Object @{Expression={
+            if ($_.CommandLine -and ($_.CommandLine.Contains("--parent_pipe_path") -or $_.CommandLine.Contains("--enable_lsp"))) { 0 } else { 1 }
+        }}, @{Expression={[long]$_.ProcessId}; Descending=$true}
 
         $netstat = netstat -ano 2>$null
 
