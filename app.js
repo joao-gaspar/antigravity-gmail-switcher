@@ -404,15 +404,22 @@ function getChooserUrl(email, service) {
 }
 
 function getActiveEmailForMachine(machineId) {
-    const selMachineObj = state.machines && state.machines.find(m => m.machine_id === (machineId || state.selectedMachineId));
-    if (selMachineObj && selMachineObj.active_email) {
-        return selMachineObj.active_email;
+    if (typeof state === 'undefined' || !state) return null;
+    const targetId = machineId || state.selectedMachineId;
+    if (state.machines && Array.isArray(state.machines)) {
+        const selMachineObj = state.machines.find(m => m && m.machine_id === targetId);
+        if (selMachineObj && selMachineObj.active_email) {
+            return selMachineObj.active_email;
+        }
     }
     if (state.currentMachine && state.currentMachine.active_email) {
         return state.currentMachine.active_email;
     }
-    const acc = state.accounts.find(a => a.id === state.activeAccountId);
-    return acc ? acc.email : null;
+    if (state.accounts && Array.isArray(state.accounts)) {
+        const acc = state.accounts.find(a => a && a.id === state.activeAccountId);
+        if (acc && acc.email) return acc.email;
+    }
+    return null;
 }
 
 // Smart Sorting Priority Rules:

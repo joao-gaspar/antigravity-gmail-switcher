@@ -19,6 +19,7 @@ Se a informação não está disponível por leitura direta de arquivo, execuç�
 - **Proibido: assumir 100% ou 0% quando o consumo de token não for medido.** Quando a medição de tokens não for obtida ou estiver ausente, exibir obrigatoriamente "Sem informação".
 - **Proibido: usar serviços de terceiros sem autorização prévia.** Nunca integrar, fazer requisições ou enviar dados para qualquer serviço de terceiros (APIs externas, bancos de dados públicos ou terceirizados) sem consultar o usuário primeiro e obter autorização prévia e expressa.
 - **Proibido: confundir a conta do Agente com a da IDE Geral.** A conta do Agente DEVE ser obtida estritamente do processo `language_server` que NÃO possui a flag `--enable_lsp` (`HasLsp = false`).
+- **Proibido: usar adjetivos ou superlativos.** Respostas e explicações devem ser operacionais, diretas e objetivas, sem palavras de exaltação ou julgamento de valor.
 
 ## O que fazer quando a informação está ausente
 
