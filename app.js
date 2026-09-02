@@ -665,8 +665,8 @@ function renderAccounts() {
             qP = getFrac(acc.tokenGpt);
         }
 
-        const renderBar = (frac, label) => {
-            if (frac === null || frac === undefined) {
+        const renderBar = (remFrac, label) => {
+            if (remFrac === null || remFrac === undefined) {
                 return `
                 <div style="display:flex; align-items:center; gap:4px; margin-bottom:2px;">
                     <span style="font-size:0.58rem; color:#9ca3af; min-width:68px; font-weight:600;">${label}</span>
@@ -676,9 +676,10 @@ function renderAccounts() {
                     <span style="font-size:0.52rem; color:#9ca3af; width:65px; text-align:right; font-family:sans-serif; font-weight:500;">Sem informação</span>
                 </div>`;
             }
-            const safeFrac = Math.max(0, Math.min(1, frac));
-            const pct = Math.round(safeFrac * 100);
-            const col = pct > 50 ? '#34d399' : pct > 15 ? '#f59e0b' : '#ef4444';
+            const safeRem = Math.max(0, Math.min(1, remFrac));
+            const consumedFrac = 1 - safeRem;
+            const pct = Math.round(consumedFrac * 100);
+            const col = pct <= 50 ? '#34d399' : pct <= 85 ? '#f59e0b' : '#ef4444';
             return `
             <div style="display:flex; align-items:center; gap:4px; margin-bottom:2px;">
                 <span style="font-size:0.58rem; color:${col}; min-width:68px; font-weight:600;">${label}</span>
