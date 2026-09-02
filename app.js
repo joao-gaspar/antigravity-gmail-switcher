@@ -403,26 +403,33 @@ function getChooserUrl(email, service) {
     return `https://accounts.google.com/AccountChooser?Email=${encodeURIComponent(email)}&continue=${encodeURIComponent(continueUrl)}`;
 }
 
-// // Smart Sorting Priority Rules:
+function getActiveEmailForMachine(machineId) {
+    const selMachineObj = state.machines && state.machines.find(m => m.machine_id === (machineId || state.selectedMachineId));
+    if (selMachineObj && selMachineObj.active_email) {
+        return selMachineObj.active_email;
+    }
+    if (state.currentMachine && state.currentMachine.active_email) {
+        return state.currentMachine.active_email;
+    }
+    const acc = state.accounts.find(a => a.id === state.activeAccountId);
+    return acc ? acc.email : null;
+}
+
+// Smart Sorting Priority Rules:
 // Rank 0: Conta ativa (fixada no topo)
 // Rank 1: Conta sugerida (indicada pelo servidor como próxima melhor)
 // Rank 2: Contas disponíveis com MAIS tokens restantes (maior capacidade restante primeiro)
 // Rank 3: Contas bloqueadas/esgotadas com MENOR prazo de retorno (renovando mais cedo primeiro)
 function sortAccountsSmart(accountsList) {
-    let activeEmailForSel = null;
-    let suggestEmailForSel = null;
+    let activeEmailForSel  = getActiveEmailForMachine(state.selectedMachineId);
+    let suggestEmailForSel = state.liveSuggestEmail;
 
     const isLocalMachineSelected = !state.selectedMachineId || 
         (state.currentMachine && state.selectedMachineId === state.currentMachine.machine_id);
 
-    if (isLocalMachineSelected) {
-        activeEmailForSel  = state.accounts.find(a => a.id === state.activeAccountId)?.email;
-        suggestEmailForSel = state.liveSuggestEmail;
-    } else {
-        if (state.snapshots && state.selectedMachineId) {
-            const snap = state.snapshots.find(s => s.machine_id === state.selectedMachineId);
-            if (snap) activeEmailForSel = snap.email;
-        }
+    if (!isLocalMachineSelected && state.snapshots && state.selectedMachineId) {
+        const snap = state.snapshots.find(s => s.machine_id === state.selectedMachineId);
+        if (snap && snap.email) activeEmailForSel = snap.email;
     }
 
     // Remaining capacity: tokens not yet consumed (higher = better)
@@ -558,24 +565,9 @@ function renderAccounts() {
     elements.emptyState.classList.add('hidden');
     elements.accountsGrid.classList.remove('hidden');
 
+    // Selected machine active email for UI badges and top-of-grid pinning
+    let selectedActiveEmail = getActiveEmailForMachine(state.selectedMachineId);
     const sorted = sortAccountsSmart(filtered);
-
-    // Selected machine active email for UI badges
-    let selectedActiveEmail = null;
-    const selectedMachineObj = state.machines && state.machines.find(m => m.machine_id === state.selectedMachineId);
-    const isViewingRemoteMachine = !!state.selectedMachineId;
-
-    if (selectedMachineObj && selectedMachineObj.active_email) {
-        // Remote machine has cloud data — use it
-        selectedActiveEmail = selectedMachineObj.active_email;
-    } else if (!isViewingRemoteMachine) {
-        // No machine explicitly selected — show local machine data
-        if (state.currentMachine && state.currentMachine.active_email) {
-            selectedActiveEmail = state.currentMachine.active_email;
-        } else {
-            selectedActiveEmail = state.accounts.find(a => a.id === state.activeAccountId)?.email;
-        }
-    }
     // If viewing a remote machine that has no cloud data yet: selectedActiveEmail stays null
     // (no card will be marked active, which is correct — we don't know what's active there)
 
