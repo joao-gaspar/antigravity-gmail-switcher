@@ -1188,10 +1188,9 @@ function fetchCloudSync() {
                 state.machines = cloudData.machines;
                 safeSetStorage('antigravity_cloud_machines_v1', JSON.stringify(state.machines));
                 
-                // Strict per-machine isolation: ONLY match this device's own machine
-                const savedMyMachine = safeGetStorage('antigravity_my_machine_id');
-                const localMachineId = (state.currentMachine && state.currentMachine.machine_id) || savedMyMachine;
-                const selMachine = localMachineId ? state.machines.find(m => m.machine_id === localMachineId) : null;
+                // Strict per-machine isolation: ONLY match the selected/active machine
+                const activeMachineId = state.selectedMachineId || safeGetStorage('antigravity_my_machine_id');
+                const selMachine = (activeMachineId && state.machines) ? state.machines.find(m => m.machine_id === activeMachineId) : null;
 
                 if (selMachine) {
                     const cloudActiveEmail = selMachine.active_email;
@@ -1264,7 +1263,8 @@ function fetchCloudSync() {
                 }
             }
 
-            if (cloudData && cloudData.accounts && cloudData.accounts.length > 0) {
+            // Only merge cloud account data when we have a matched machine
+            if (selMachine && cloudData && cloudData.accounts && cloudData.accounts.length > 0) {
                 cloudData.accounts.forEach(ca => {
                     if (!ca.email) return;
                     const local = state.accounts.find(a => a.email && a.email.toLowerCase() === ca.email.toLowerCase());
@@ -1279,12 +1279,13 @@ function fetchCloudSync() {
             }
 
             renderAccounts();
-            const activeCloudMachine = (localMachineId && state.machines) 
-                ? state.machines.find(m => m.machine_id === localMachineId)
+            const activeMachineId = state.selectedMachineId || safeGetStorage('antigravity_my_machine_id');
+            const activeCloudMachine = (state.machines && activeMachineId)
+                ? state.machines.find(m => m.machine_id === activeMachineId)
                 : null;
 
             updateLiveBanner(
-                activeCloudMachine ? activeCloudMachine.active_email : (state.currentMachine ? state.currentMachine.active_email : null),
+                activeCloudMachine ? activeCloudMachine.active_email : null,
                 activeCloudMachine ? activeCloudMachine.suggest_email : null,
                 activeCloudMachine ? activeCloudMachine.last_seen : null,
                 false,
@@ -1314,34 +1315,32 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
     }
     banner.style.display = 'block';
     
-    const savedMyMachine = safeGetStorage('antigravity_my_machine_id');
-    const localHost = (activeCloudMachine && activeCloudMachine.hostname) || (state.currentMachine && state.currentMachine.hostname) || (savedMyMachine ? savedMyMachine.replace('mac-', '').toUpperCase() : 'Este Computador');
-    const localUser = (activeCloudMachine && activeCloudMachine.username) ? ` (${activeCloudMachine.username})` : ((state.currentMachine && state.currentMachine.username) ? ` (${state.currentMachine.username})` : '');
+    const activeMachineId = state.selectedMachineId || safeGetStorage('antigravity_my_machine_id') || 'mac-ebbim';
 
-    let machineBadgeHtml = '';
-    const currentBoundId = (activeCloudMachine && activeCloudMachine.machine_id) || (state.currentMachine && state.currentMachine.machine_id) || savedMyMachine;
+    // List of available machines (always including EBBIM and LAPTOP)
+    const machineList = (state.machines && state.machines.length > 0) ? [...state.machines] : [
+        { machine_id: 'mac-ebbim', hostname: 'EBBIM' },
+        { machine_id: 'mac-laptop', hostname: 'LAPTOP' }
+    ];
 
-    if (state.machines && state.machines.length > 1) {
-        const btns = state.machines.map(m => {
-            const isSel = m.machine_id === currentBoundId;
-            const bg = isSel ? 'linear-gradient(135deg, rgba(96,165,250,0.35) 0%, rgba(168,85,247,0.35) 100%)' : 'rgba(255,255,255,0.06)';
-            const border = isSel ? '1px solid #60a5fa' : '1px solid rgba(255,255,255,0.12)';
-            const color = isSel ? '#ffffff' : '#9ca3af';
-            return `<button onclick="selectThisDeviceMachine('${m.machine_id}')" style="background:${bg}; border:${border}; color:${color}; font-size:0.62rem; padding:2px 8px; border-radius:6px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">💻 ${m.hostname}</button>`;
-        }).join(' ');
-        machineBadgeHtml = `
-            <div style="display:flex; align-items:center; gap:6px;">
-                <span style="font-size:0.56rem; color:#6b7280; font-weight:700;">MÁQUINA:</span>
-                ${btns}
-            </div>
-        `;
-    } else {
-        machineBadgeHtml = `
-            <div style="display:flex; align-items:center; gap:6px; font-size:0.68rem; font-weight:700; color:#e2e8f0;">
-                <i class="fa-solid fa-laptop" style="color:#60a5fa;"></i> <span>${localHost}${localUser}</span>
-            </div>
-        `;
+    if (!machineList.some(m => m.machine_id === 'mac-laptop' || m.hostname === 'LAPTOP')) {
+        machineList.push({ machine_id: 'mac-laptop', hostname: 'LAPTOP' });
     }
+
+    const btns = machineList.map(m => {
+        const isSel = m.machine_id === activeMachineId;
+        const bg = isSel ? 'linear-gradient(135deg, rgba(96,165,250,0.4) 0%, rgba(168,85,247,0.4) 100%)' : 'rgba(255,255,255,0.06)';
+        const border = isSel ? '1px solid #60a5fa' : '1px solid rgba(255,255,255,0.12)';
+        const color = isSel ? '#ffffff' : '#9ca3af';
+        return `<button onclick="selectThisDeviceMachine('${m.machine_id}')" style="background:${bg}; border:${border}; color:${color}; font-size:0.62rem; padding:3px 10px; border-radius:6px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:5px;">💻 ${m.hostname}</button>`;
+    }).join(' ');
+
+    const machineBadgeHtml = `
+        <div style="display:flex; align-items:center; gap:6px;">
+            <span style="font-size:0.56rem; color:#6b7280; font-weight:700;">MÁQUINA:</span>
+            ${btns}
+        </div>
+    `;
 
     const displayActiveEmail = agentEmail || null;
     const agentPart = displayActiveEmail
@@ -1357,9 +1356,6 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
     banner.innerHTML = `
         <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:5px;">
             ${machineBadgeHtml}
-            <span style="color:${displayActiveEmail ? '#10b981' : '#9ca3af'}; font-size:0.6rem; font-weight:700; display:inline-flex; align-items:center; gap:4px; margin-left:auto;">
-                <span style="width:6px; height:6px; background:${displayActiveEmail ? '#10b981' : '#6b7280'}; border-radius:50%; display:inline-block; box-shadow:0 0 8px ${displayActiveEmail ? '#10b981' : 'transparent'};"></span> ${displayActiveEmail ? 'Online' : 'Offline'}
-            </span>
         </div>
         <div style="display:flex; align-items:center; gap:10px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.05); font-size:0.65rem;">
             <span style="color:#6b7280; font-size:0.56rem; font-weight:700; flex-shrink:0;">ATIVA</span>
