@@ -630,20 +630,15 @@ function getChooserUrl(email, service) {
 
 function getActiveEmailForMachine(machineId) {
     if (typeof state === 'undefined' || !state) return null;
-    const targetId = machineId || state.selectedMachineId;
+    const targetId = machineId || (state.currentMachine && state.currentMachine.machine_id) || safeGetStorage('antigravity_my_machine_id');
     if (targetId && state.machines && Array.isArray(state.machines)) {
         const selMachineObj = state.machines.find(m => m && m.machine_id === targetId);
         if (selMachineObj && selMachineObj.active_email) {
             return selMachineObj.active_email;
         }
     }
-    if (!targetId) {
-        if (state.machines && Array.isArray(state.machines) && state.machines.length > 0 && state.machines[0].active_email) {
-            return state.machines[0].active_email;
-        }
-        if (state.currentMachine && state.currentMachine.active_email) {
-            return state.currentMachine.active_email;
-        }
+    if (state.currentMachine && state.currentMachine.active_email) {
+        return state.currentMachine.active_email;
     }
     return null;
 }
@@ -1195,15 +1190,8 @@ function fetchCloudSync() {
                 
                 // Strict per-machine isolation: ONLY match this device's own machine
                 const savedMyMachine = safeGetStorage('antigravity_my_machine_id');
-                let localMachineId = (state.currentMachine && state.currentMachine.machine_id) || savedMyMachine;
-                
-                // Auto-bind to available cloud machine on load if not set
-                if (!localMachineId && state.machines && state.machines.length > 0) {
-                    localMachineId = state.machines[0].machine_id;
-                    safeSetStorage('antigravity_my_machine_id', localMachineId);
-                }
-
-                const selMachine = localMachineId ? state.machines.find(m => m.machine_id === localMachineId) : (state.machines ? state.machines[0] : null);
+                const localMachineId = (state.currentMachine && state.currentMachine.machine_id) || savedMyMachine;
+                const selMachine = localMachineId ? state.machines.find(m => m.machine_id === localMachineId) : null;
 
                 if (selMachine) {
                     const cloudActiveEmail = selMachine.active_email;
@@ -1369,8 +1357,8 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
     banner.innerHTML = `
         <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:5px;">
             ${machineBadgeHtml}
-            <span style="color:${displayActiveEmail ? '#10b981' : '#f59e0b'}; font-size:0.6rem; font-weight:700; display:inline-flex; align-items:center; gap:4px; margin-left:auto;">
-                <span style="width:6px; height:6px; background:${displayActiveEmail ? '#10b981' : '#f59e0b'}; border-radius:50%; display:inline-block; box-shadow:0 0 8px ${displayActiveEmail ? '#10b981' : '#f59e0b'};"></span> ${displayActiveEmail ? 'Online' : 'Aguardando Sincronização'}
+            <span style="color:${displayActiveEmail ? '#10b981' : '#9ca3af'}; font-size:0.6rem; font-weight:700; display:inline-flex; align-items:center; gap:4px; margin-left:auto;">
+                <span style="width:6px; height:6px; background:${displayActiveEmail ? '#10b981' : '#6b7280'}; border-radius:50%; display:inline-block; box-shadow:0 0 8px ${displayActiveEmail ? '#10b981' : 'transparent'};"></span> ${displayActiveEmail ? 'Online' : 'Offline'}
             </span>
         </div>
         <div style="display:flex; align-items:center; gap:10px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.05); font-size:0.65rem;">
