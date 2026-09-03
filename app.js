@@ -61,8 +61,15 @@ const elements = {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Read machine identity from URL ?machine= param (set by gmail-switcher.ps1 check)
     const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('reset') === '1' || urlParams.get('clean') === '1') {
+        try {
+            localStorage.clear();
+        } catch(e) {}
+        window.location.href = window.location.pathname;
+        return;
+    }
+    // Read machine identity from URL ?machine= param (set by gmail-switcher.ps1 check)
     const machineFromUrl = urlParams.get('machine');
     if (machineFromUrl) {
         safeSetStorage('antigravity_my_machine_id', machineFromUrl);
