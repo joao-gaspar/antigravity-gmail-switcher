@@ -275,36 +275,261 @@ function loadAccounts() {
                         "exhausted_models": []
             },
             {
-                        "id": "tilab-aluno10",
-                        "name": "TI Lab Aluno 10",
-                        "email": "aluno10@tilab.com.br",
-                        "category": "clients",
-                        "avatarUrl": "",
-                        "theme": "gradient-amber",
-                        "notes": "",
-                        "status": "available",
-                        "tokenGemini": null,
-                        "tokenClaude": null,
-                        "tokenGpt": null,
-                        "reset_at": null,
-                        "exhausted_models": []
+                "id": "tilab-aluno10",
+                "name": "TI Lab Aluno 10",
+                "email": "aluno10@tilab.com.br",
+                "category": "clients",
+                "avatarUrl": "",
+                "theme": "gradient-amber",
+                "notes": "",
+                "status": "available",
+                "tokenGemini": null,
+                "tokenClaude": null,
+                "tokenGpt": null,
+                "reset_at": null,
+                "exhausted_models": []
             },
             {
-                        "id": "acc-joaogaspar-gmail-com",
-                        "name": "Joaogaspar",
-                        "email": "joaogaspar@gmail.com",
-                        "category": "work",
-                        "avatarUrl": "",
-                        "theme": "gradient-cyber",
-                        "notes": "",
-                        "status": "available",
-                        "tokenGemini": null,
-                        "tokenClaude": null,
-                        "tokenGpt": null,
-                        "reset_at": null,
-                        "exhausted_models": []
+                "id": "tilab-aluno11",
+                "name": "TI Lab Aluno 11",
+                "email": "aluno11@tilab.com.br",
+                "category": "clients",
+                "avatarUrl": "",
+                "theme": "gradient-purple",
+                "notes": "",
+                "status": "available",
+                "tokenGemini": null,
+                "tokenClaude": null,
+                "tokenGpt": null,
+                "reset_at": null,
+                "exhausted_models": []
+            },
+            {
+                "id": "tilab-aluno12",
+                "name": "TI Lab Aluno 12",
+                "email": "aluno12@tilab.com.br",
+                "category": "clients",
+                "avatarUrl": "",
+                "theme": "gradient-sunset",
+                "notes": "",
+                "status": "available",
+                "tokenGemini": null,
+                "tokenClaude": null,
+                "tokenGpt": null,
+                "reset_at": null,
+                "exhausted_models": []
+            },
+            {
+                "id": "tilab-aluno13",
+                "name": "TI Lab Aluno 13",
+                "email": "aluno13@tilab.com.br",
+                "category": "clients",
+                "avatarUrl": "",
+                "theme": "gradient-emerald",
+                "notes": "",
+                "status": "available",
+                "tokenGemini": null,
+                "tokenClaude": null,
+                "tokenGpt": null,
+                "reset_at": null,
+                "exhausted_models": []
+            },
+            {
+                "id": "tilab-aluno14",
+                "name": "TI Lab Aluno 14",
+                "email": "aluno14@tilab.com.br",
+                "category": "clients",
+                "avatarUrl": "",
+                "theme": "gradient-amber",
+                "notes": "",
+                "status": "available",
+                "tokenGemini": null,
+                "tokenClaude": null,
+                "tokenGpt": null,
+                "reset_at": null,
+                "exhausted_models": []
+            },
+            {
+                "id": "tilab-aluno15",
+                "name": "TI Lab Aluno 15",
+                "email": "aluno15@tilab.com.br",
+                "category": "clients",
+                "avatarUrl": "",
+                "theme": "gradient-cyber",
+                "notes": "",
+                "status": "available",
+                "tokenGemini": null,
+                "tokenClaude": null,
+                "tokenGpt": null,
+                "reset_at": null,
+                "exhausted_models": []
+            },
+            {
+                "id": "tilab-aluno16",
+                "name": "TI Lab Aluno 16",
+                "email": "aluno16@tilab.com.br",
+                "category": "clients",
+                "avatarUrl": "",
+                "theme": "gradient-nordic",
+                "notes": "",
+                "status": "available",
+                "tokenGemini": null,
+                "tokenClaude": null,
+                "tokenGpt": null,
+                "reset_at": null,
+                "exhausted_models": []
+            },
+            {
+                "id": "tilab-aluno17",
+                "name": "TI Lab Aluno 17",
+                "email": "aluno17@tilab.com.br",
+                "category": "clients",
+                "avatarUrl": "",
+                "theme": "gradient-purple",
+                "notes": "",
+                "status": "available",
+                "tokenGemini": null,
+                "tokenClaude": null,
+                "tokenGpt": null,
+                "reset_at": null,
+                "exhausted_models": []
+            },
+            {
+                "id": "tilab-aluno18",
+                "name": "TI Lab Aluno 18",
+                "email": "aluno18@tilab.com.br",
+                "category": "clients",
+                "avatarUrl": "",
+                "theme": "gradient-sunset",
+                "notes": "",
+                "status": "available",
+                "tokenGemini": null,
+                "tokenClaude": null,
+                "tokenGpt": null,
+                "reset_at": null,
+                "exhausted_models": []
+            },
+            {
+                "id": "tilab-aluno19",
+                "name": "TI Lab Aluno 19",
+                "email": "aluno19@tilab.com.br",
+                "category": "clients",
+                "avatarUrl": "",
+                "theme": "gradient-emerald",
+                "notes": "",
+                "status": "available",
+                "tokenGemini": null,
+                "tokenClaude": null,
+                "tokenGpt": null,
+                "reset_at": null,
+                "exhausted_models": []
+            },
+            {
+                "id": "tilab-aluno20",
+                "name": "TI Lab Aluno 20",
+                "email": "aluno20@tilab.com.br",
+                "category": "clients",
+                "avatarUrl": "",
+                "theme": "gradient-amber",
+                "notes": "",
+                "status": "available",
+                "tokenGemini": null,
+                "tokenClaude": null,
+                "tokenGpt": null,
+                "reset_at": null,
+                "exhausted_models": []
+            },
+            {
+                "id": "tilab-aluno21",
+                "name": "TI Lab Aluno 21",
+                "email": "aluno21@tilab.com.br",
+                "category": "clients",
+                "avatarUrl": "",
+                "theme": "gradient-cyber",
+                "notes": "",
+                "status": "available",
+                "tokenGemini": null,
+                "tokenClaude": null,
+                "tokenGpt": null,
+                "reset_at": null,
+                "exhausted_models": []
+            },
+            {
+                "id": "tilab-aluno22",
+                "name": "TI Lab Aluno 22",
+                "email": "aluno22@tilab.com.br",
+                "category": "clients",
+                "avatarUrl": "",
+                "theme": "gradient-nordic",
+                "notes": "",
+                "status": "available",
+                "tokenGemini": null,
+                "tokenClaude": null,
+                "tokenGpt": null,
+                "reset_at": null,
+                "exhausted_models": []
+            },
+            {
+                "id": "tilab-aluno23",
+                "name": "TI Lab Aluno 23",
+                "email": "aluno23@tilab.com.br",
+                "category": "clients",
+                "avatarUrl": "",
+                "theme": "gradient-purple",
+                "notes": "",
+                "status": "available",
+                "tokenGemini": null,
+                "tokenClaude": null,
+                "tokenGpt": null,
+                "reset_at": null,
+                "exhausted_models": []
+            },
+            {
+                "id": "tilab-aluno24",
+                "name": "TI Lab Aluno 24",
+                "email": "aluno24@tilab.com.br",
+                "category": "clients",
+                "avatarUrl": "",
+                "theme": "gradient-purple",
+                "notes": "",
+                "status": "available",
+                "tokenGemini": null,
+                "tokenClaude": null,
+                "tokenGpt": null,
+                "reset_at": null,
+                "exhausted_models": []
+            },
+            {
+                "id": "tilab-aluno25",
+                "name": "TI Lab Aluno 25",
+                "email": "aluno25@tilab.com.br",
+                "category": "clients",
+                "avatarUrl": "",
+                "theme": "gradient-sunset",
+                "notes": "",
+                "status": "available",
+                "tokenGemini": null,
+                "tokenClaude": null,
+                "tokenGpt": null,
+                "reset_at": null,
+                "exhausted_models": []
+            },
+            {
+                "id": "acc-joaogaspar-gmail-com",
+                "name": "Joaogaspar",
+                "email": "joaogaspar@gmail.com",
+                "category": "work",
+                "avatarUrl": "",
+                "theme": "gradient-cyber",
+                "notes": "",
+                "status": "available",
+                "tokenGemini": null,
+                "tokenClaude": null,
+                "tokenGpt": null,
+                "reset_at": null,
+                "exhausted_models": []
             }
-];
+        ];
         saveAccounts();
     }
     state.activeAccountId = safeGetStorage('antigravity_active_account_id') || 'tilab-aluno10';
@@ -406,17 +631,19 @@ function getChooserUrl(email, service) {
 function getActiveEmailForMachine(machineId) {
     if (typeof state === 'undefined' || !state) return null;
     const targetId = machineId || state.selectedMachineId;
-    if (targetId) {
-        if (state.machines && Array.isArray(state.machines)) {
-            const selMachineObj = state.machines.find(m => m && m.machine_id === targetId);
-            if (selMachineObj && selMachineObj.active_email) {
-                return selMachineObj.active_email;
-            }
+    if (targetId && state.machines && Array.isArray(state.machines)) {
+        const selMachineObj = state.machines.find(m => m && m.machine_id === targetId);
+        if (selMachineObj && selMachineObj.active_email) {
+            return selMachineObj.active_email;
         }
-        return null;
     }
-    if (state.currentMachine && state.currentMachine.active_email) {
-        return state.currentMachine.active_email;
+    if (!targetId) {
+        if (state.machines && Array.isArray(state.machines) && state.machines.length > 0 && state.machines[0].active_email) {
+            return state.machines[0].active_email;
+        }
+        if (state.currentMachine && state.currentMachine.active_email) {
+            return state.currentMachine.active_email;
+        }
     }
     return null;
 }
@@ -572,8 +799,9 @@ function renderAccounts() {
     elements.accountsGrid.classList.remove('hidden');
 
     // Selected machine active email for UI badges and top-of-grid pinning
-    const selectedMachineObj = state.machines && Array.isArray(state.machines) &&
-        state.machines.find(m => m && m.machine_id === state.selectedMachineId);
+    const selectedMachineObj = state.machines && Array.isArray(state.machines)
+        ? (state.selectedMachineId ? state.machines.find(m => m && m.machine_id === state.selectedMachineId) : state.machines[0])
+        : null;
     let selectedActiveEmail = getActiveEmailForMachine(state.selectedMachineId);
     const sorted = sortAccountsSmart(filtered);
 
@@ -622,7 +850,8 @@ function renderAccounts() {
                 qG = getFrac(state.liveQuota.gemini);
                 qC = getFrac(state.liveQuota.claude);
                 qP = getFrac(state.liveQuota.gpt);
-            } else {
+            }
+            if (qG === null && qC === null) {
                 const quotasSource = (selectedMachineObj && selectedMachineObj.model_quotas) || 
                                      (state.currentMachine && state.currentMachine.model_quotas) || 
                                      state.liveModelQuotas;
