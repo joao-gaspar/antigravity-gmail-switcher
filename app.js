@@ -792,9 +792,8 @@ function renderAccounts() {
         if (!acc || !acc.email) return false;
         const accName  = (acc.name || acc.email || '').toLowerCase();
         const accEmail = (acc.email || '').toLowerCase();
-        const matchesCategory = state.currentFilter === 'all' || acc.category === state.currentFilter;
-        const matchesSearch   = accName.includes(state.searchQuery) || accEmail.includes(state.searchQuery);
-        return matchesCategory && matchesSearch;
+        const query = (state.searchQuery || '').toLowerCase().trim();
+        return !query || accName.includes(query) || accEmail.includes(query);
     });
 
     if (filtered.length === 0) {
