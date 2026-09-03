@@ -50,19 +50,12 @@
                 <div style="display: flex; gap: 4px; align-items: center;">
                     </div>
                 </div>
-                <!-- Search + Filter on one row -->
+                <!-- Search on top bar -->
                 <div style="display: flex; gap: 4px;" id="controls-section">
                     <div style="position: relative; flex: 1;">
                         <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:6px; top:50%; transform:translateY(-50%); font-size:0.65rem; color:var(--text-muted);"></i>
-                        <input type="text" id="search-input" placeholder="Pesquisar..." style="width:100%; padding: 4px 6px 4px 22px; background: rgba(255,255,255,0.04); border: 1px solid var(--border-color); border-radius: 6px; color:#fff; font-size:0.7rem; outline:none; box-sizing:border-box;">
+                        <input type="text" id="search-input" placeholder="Pesquisar contas..." style="width:100%; padding: 4px 6px 4px 22px; background: rgba(255,255,255,0.04); border: 1px solid var(--border-color); border-radius: 6px; color:#fff; font-size:0.7rem; outline:none; box-sizing:border-box;">
                     </div>
-                    <select id="category-filter-select" style="padding: 4px 6px; background: rgba(255,255,255,0.04); border: 1px solid var(--border-color); border-radius: 6px; color:#fff; font-size:0.7rem; outline:none;">
-                        <option value="all">Todos</option>
-                        <option value="work">Trabalho</option>
-                        <option value="personal">Pessoal</option>
-                        <option value="clients">Clientes</option>
-                        <option value="other">Outros</option>
-                    </select>
                 </div>
                 <!-- Live banner slot — injected here by JS, stays pinned above the scroll -->
                 <div id="live-banner-slot" style="margin-top:6px;"></div>
@@ -301,6 +294,6 @@
         </div>
     </div>
 
-    <script src="app.js?v=85"></script>
+    <script src="app.js?v=86"></script>
 </body>
 </html>
