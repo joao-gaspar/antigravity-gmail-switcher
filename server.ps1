@@ -49,11 +49,14 @@ function Get-LanguageServerStatus {
             $csrf = $m.Groups[1].Value
 
             $listeningPorts = @()
+            if ($cl -match '--https_server_port\s+(\d+)') {
+                $listeningPorts += [int]$Matches[1]
+            }
             foreach ($line in ($netstat -split "\r?\n")) {
-                if ($line -like "*LISTENING*" -and $line.Trim().EndsWith($pidVal.ToString())) {
-                    $pm = [regex]::Match($line, '127\.0\.0\.1:(\d+)')
-                    if ($pm.Success) {
-                        $listeningPorts += [int]$pm.Groups[1].Value
+                if ($line -match "LISTENING\s+$pidVal`$" -and $line -match '127\.0\.0\.1:(\d+)') {
+                    $portFound = [int]$Matches[1]
+                    if ($portFound -notin $listeningPorts) {
+                        $listeningPorts += $portFound
                     }
                 }
             }
@@ -62,11 +65,12 @@ function Get-LanguageServerStatus {
                 try {
                     $url = "https://127.0.0.1:$port/exa.language_server_pb.LanguageServerService/GetUserStatus"
                     [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+                    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
                     $req = [System.Net.HttpWebRequest]::Create($url)
                     $req.Method = "POST"
                     $req.Headers.Add("x-codeium-csrf-token", $csrf)
                     $req.ContentType = "application/json"
-                    $req.Timeout = 2000
+                    $req.Timeout = 2500
                     $bodyBytes = [System.Text.Encoding]::UTF8.GetBytes("{}")
                     $req.ContentLength = $bodyBytes.Length
                     $st = $req.GetRequestStream()
@@ -80,11 +84,22 @@ function Get-LanguageServerStatus {
                     $resp.Close()
 
                     $parsed = $jsonStr | ConvertFrom-Json
-                    if ($parsed.userStatus -and ($parsed.userStatus.email -or ($parsed.userStatus.user -and $parsed.userStatus.user.email))) {
+                    $us = if ($parsed.userStatus) { $parsed.userStatus } else { $parsed }
+                    $email = $null
+                    if ($us.email) { $email = [string]$us.email }
+                    elseif ($us.user -and $us.user.email) { $email = [string]$us.user.email }
+                    elseif ($us.userInfo -and $us.userInfo.email) { $email = [string]$us.userInfo.email }
+                    elseif ($us.userAccount -and $us.userAccount.email) { $email = [string]$us.userAccount.email }
+                    elseif ($us.profile -and $us.profile.email) { $email = [string]$us.profile.email }
+                    elseif ($us.primaryEmail) { $email = [string]$us.primaryEmail }
+
+                    if ($email -or ($us -and ($us.cascadeModelConfigData -or $us.clientModelConfigs -or $us.availableModels))) {
                         return @{
-                            userStatus = $parsed.userStatus
+                            userStatus = $us
                             port = $port
                             pid = $pidVal
+                            email = $email
+                            name = if ($us.name) { [string]$us.name } elseif ($us.user -and $us.user.name) { [string]$us.user.name } else { "" }
                         }
                     }
                 } catch {}

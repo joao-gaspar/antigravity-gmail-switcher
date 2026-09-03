@@ -29,6 +29,14 @@ A skill é distribuída nativamente através do próprio repositório na pasta `
 14. **PROIBIDO EXIBIR SELETOR MANUAL DE MÁQUINA NA INTERFACE**: A identificação da máquina ocorre automaticamente por sessão.
 15. **ARQUITETURA CANÔNICA PADRÃO: EXECUÇÃO LOCAL NATIVA VIA `http://localhost:8000` (OPÇÃO A)**: O padrão arquitetural definitivo e obrigatório é a execução local no computador via `server.ps1` (ou Webview / Simple Browser do Antigravity) acessando `http://localhost:8000`. O frontend conecta-se diretamente a `http://127.0.0.1:8000/api/live`, detectando o `$env:COMPUTERNAME`, a conta ativa e as cotas dos modelos em tempo real sem intermediários de nuvem ou restrições de rede externa.
 16. **O ANTIGRAVITY IDE ESTÁ SEMPRE ABERTO EM QUALQUER WORKSPACE**: É um fato estabelecido e permanente que o Antigravity IDE está sempre aberto em todos os computadores deste ambiente. É PROIBIDO perguntar ao usuário se o IDE está aberto. O mecanismo de inicialização automática é o `~/.gemini/config/hooks.json` (global) que executa `gmail-switcher.ps1 check` via `PreInvocation` — funcionando em QUALQUER workspace ou projeto aberto no Antigravity, iniciando o `server.ps1`, sincronizando a telemetria e abrindo o painel com a URL correta automaticamente, sem nenhuma ação do usuário.
+17. **MÉTODO DE IDENTIFICAÇÃO AUTOMÁTICA DO COMPUTADOR**: O frontend (`app.js`) executa `pollLocalServer()` testando as portas candidatas (`8000, 8999, 8998, 8997, 8996, 8995`) em `http://127.0.0.1:<PORT>/api/live`. O `server.ps1` nativo responde com `{ machine: { hostname: $env:COMPUTERNAME, machine_id: 'mac-' + $env:COMPUTERNAME.ToLower() } }`. O `app.js` grava `localStorage.antigravity_my_machine_id` e isola os dados da máquina sem intervenção do usuário.
+18. **MÉTODO DE IDENTIFICAÇÃO DETERMINÍSTICA DO PID DO AGENTE E CONTA ATIVA**:
+   - Localiza processos `language_server*` via `Get-CimInstance Win32_Process`.
+   - Filtra o processo do **AGENTE** (aquele **SEM** a flag `--enable_lsp`).
+   - Extrai o token CSRF (`--csrf_token <TOKEN>`) da linha de comando do processo.
+   - Identifica todas as portas de escuta TCP do PID via `netstat -ano` (regex `LISTENING\s+$PID$`).
+   - Executa chamada TLS 1.2 `POST https://127.0.0.1:<PORT>/exa.language_server_pb.LanguageServerService/GetUserStatus` com header `x-codeium-csrf-token: <TOKEN>`.
+   - Extrai o e-mail ativo da conta e o mapa de cotas reais (`cascadeModelConfigData.clientModelConfigs`).
 
 ## Execução da Skill pelo Agente
 
