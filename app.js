@@ -1161,6 +1161,7 @@ function processLiveData(data) {
         claude: hasClaude ? claudeMin : null,
         gpt:    hasGpt    ? gptMin    : null
     };
+    state.liveAgentEmail = agentEmail;
     state.liveModelQuotas = modelQuotas;
     state.liveSuggestEmail = suggestEmail;
     state.liveLastCheck = lastCheck;
@@ -1298,20 +1299,38 @@ function fetchCloudSync() {
                 ? state.machines.find(m => m.machine_id === activeMachineId)
                 : null;
 
-            const finalActiveEmail = (activeCloudMachine && activeCloudMachine.active_email) ? activeCloudMachine.active_email : null;
-            const finalSuggestEmail = (activeCloudMachine && activeCloudMachine.suggest_email) ? activeCloudMachine.suggest_email : null;
+            const finalActiveEmail = (activeCloudMachine && activeCloudMachine.active_email)
+                || (state.currentMachine && state.currentMachine.active_email)
+                || (state.liveAgentEmail)
+                || null;
+
+            const finalSuggestEmail = (activeCloudMachine && activeCloudMachine.suggest_email)
+                || (state.currentMachine && state.currentMachine.suggest_email)
+                || (state.liveSuggestEmail)
+                || null;
+
+            const finalLastSeen = (activeCloudMachine && activeCloudMachine.last_seen)
+                || (state.currentMachine && state.currentMachine.last_seen)
+                || state.liveLastCheck
+                || null;
+
+            const finalSuggestReason = (activeCloudMachine && activeCloudMachine.suggest_reason)
+                || (state.currentMachine && state.currentMachine.suggest_reason)
+                || '';
 
             updateLiveBanner(
                 finalActiveEmail,
                 finalSuggestEmail,
-                activeCloudMachine ? activeCloudMachine.last_seen : null,
+                finalLastSeen,
                 false,
-                activeCloudMachine ? activeCloudMachine.suggest_reason : '',
-                activeCloudMachine
+                finalSuggestReason,
+                activeCloudMachine || state.currentMachine
             );
         })
         .catch(() => {
-            updateLiveBanner(null, null, null, false);
+            const finalActiveEmail = (state.currentMachine && state.currentMachine.active_email) || state.liveAgentEmail || null;
+            const finalSuggestEmail = (state.currentMachine && state.currentMachine.suggest_email) || state.liveSuggestEmail || null;
+            updateLiveBanner(finalActiveEmail, finalSuggestEmail, state.liveLastCheck, false, '', state.currentMachine);
         });
 }
 
