@@ -27,6 +27,7 @@ A skill é distribuída nativamente através do próprio repositório na pasta `
 12. **ISOLAMENTO TOTAL POR COMPUTADOR**: A interface DEVE exibir EXCLUSIVAMENTE as informações do PRÓPRIO computador onde o navegador/IDE está aberto. É ESTRITAMENTE PROIBIDO exibir dados, contas ativas, nomes de máquinas ou cotas de outro computador.
 13. **PROIBIDO EXIGIR OU SUGERIR INSTALAÇÃO DE ARQUIVOS .BAT OU SERVIÇOS EM SEGUNDO PLANO**: É expressamente proibido sugerir ou criar rotinas de instalação de arquivos `.bat` ou criação de serviços/daemons manuais no sistema operacional. A sincronização e operação devem ser 100% nativas via comandos PowerShell existentes na Skill ou pela própria sessão do Antigravity.
 14. **PROIBIDO EXIBIR SELETOR MANUAL DE MÁQUINA NA INTERFACE**: A identificação da máquina ocorre automaticamente por sessão.
+15. **ARQUITETURA CANÔNICA PADRÃO: EXECUÇÃO LOCAL NATIVA VIA `http://localhost:8000` (OPÇÃO A)**: O padrão arquitetural definitivo e obrigatório é a execução local no computador via `server.ps1` (ou Webview / Simple Browser do Antigravity) acessando `http://localhost:8000`. O frontend conecta-se diretamente a `http://127.0.0.1:8000/api/live`, detectando o `$env:COMPUTERNAME`, a conta ativa e as cotas dos modelos em tempo real sem intermediários de nuvem ou restrições de rede externa.
 
 ## Execução da Skill pelo Agente
 
