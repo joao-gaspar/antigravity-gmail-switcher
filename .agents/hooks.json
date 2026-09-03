@@ -1,0 +1,11 @@
+{
+  "gmail-switcher-autostart": {
+    "enabled": true,
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "powershell -WindowStyle Hidden -ExecutionPolicy Bypass -Command \"if (-not (Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue)) { Start-Process powershell -ArgumentList '-WindowStyle Hidden -ExecutionPolicy Bypass -File .agents/skills/gmail-switcher/scripts/server.ps1' -WindowStyle Hidden }\""
+      }
+    ]
+  }
+}
