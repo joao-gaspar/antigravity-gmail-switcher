@@ -997,18 +997,40 @@ function fetchCloudSync() {
                         const isSelectedMachine = (!state.selectedMachineId) ||
                                                   (selMachine.machine_id === state.selectedMachineId);
                         if (isSelectedMachine) {
-                            let detectedAcc = state.accounts.find(a => a.email.toLowerCase() === cloudActiveEmail.toLowerCase());
-                            if (detectedAcc) {
-                                state.activeAccountId = detectedAcc.id;
-                                detectedAcc.tokenGemini = state.liveQuota.gemini;
-                                detectedAcc.tokenClaude = state.liveQuota.claude;
-                                detectedAcc.tokenGpt    = state.liveQuota.gpt;
-                                detectedAcc.lastMeasuredAt = new Date().toISOString();
-                                if (state.liveQuota.gemini === 0 && state.liveQuota.claude === 0 && state.liveQuota.gpt === 0) {
-                                    detectedAcc.status = 'exhausted';
-                                }
+                            let detectedAcc = state.accounts.find(a => a.email && a.email.toLowerCase() === cloudActiveEmail.toLowerCase());
+                            if (!detectedAcc) {
+                                // Account from Vercel not in local list — create it so it can be shown as active
+                                const newId = 'acc-' + cloudActiveEmail.replace(/[@.]/g, '-');
+                                detectedAcc = {
+                                    id: newId,
+                                    name: cloudActiveEmail.split('@')[0],
+                                    email: cloudActiveEmail,
+                                    category: cloudActiveEmail.includes('aluno') ? 'clients' : 'work',
+                                    avatarUrl: '',
+                                    theme: 'gradient-purple',
+                                    notes: '',
+                                    status: 'available',
+                                    tokenGemini: null,
+                                    tokenClaude: null,
+                                    tokenGpt: null,
+                                    reset_at: null,
+                                    exhausted_models: []
+                                };
+                                state.accounts.unshift(detectedAcc);
                                 saveAccounts();
                             }
+                            if (detectedAcc.id !== state.activeAccountId) {
+                                state.activeAccountId = detectedAcc.id;
+                                safeSetStorage('antigravity_active_account_id', state.activeAccountId);
+                            }
+                            detectedAcc.tokenGemini = state.liveQuota.gemini;
+                            detectedAcc.tokenClaude = state.liveQuota.claude;
+                            detectedAcc.tokenGpt    = state.liveQuota.gpt;
+                            detectedAcc.lastMeasuredAt = new Date().toISOString();
+                            if (state.liveQuota.gemini === 0 && state.liveQuota.claude === 0 && state.liveQuota.gpt === 0) {
+                                detectedAcc.status = 'exhausted';
+                            }
+                            saveAccounts();
                         }
                     }
                 }
