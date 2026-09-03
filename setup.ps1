@@ -1,105 +1,36 @@
-# AGS (Antigravity Gmail Switcher) Auto-Setup Script for Windows
-$ErrorActionPreference = "Stop"
+# AGS (Antigravity Gmail Switcher) Native Auto-Setup for Windows
+$ErrorActionPreference = "SilentlyContinue"
 $OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-$AGS_VERSION = "2.4.6"
 Write-Host "`n========================================================" -ForegroundColor Cyan
-Write-Host " [AGS] INICIANDO AUTO-SETUP DO AGS v$AGS_VERSION" -ForegroundColor Cyan
+Write-Host " [AGS] CONECTANDO NOVO COMPUTADOR AO ANTIGRAVITY" -ForegroundColor Cyan
 Write-Host "========================================================`n" -ForegroundColor Cyan
 
-$destDir = "$env:USERPROFILE\.gemini\antigravity-ide\scratch\gmail-switcher"
-if (-not (Test-Path $destDir)) {
-    New-Item -ItemType Directory -Force -Path $destDir | Out-Null
-}
-
-$skillDir = "$env:USERPROFILE\.gemini\config\skills\gmail-switcher"
-if (-not (Test-Path $skillDir)) {
-    New-Item -ItemType Directory -Force -Path $skillDir | Out-Null
+$destDir = "$env:USERPROFILE\.gemini\config\skills\gmail-switcher"
+if (-not (Test-Path "$destDir\scripts")) {
+    New-Item -ItemType Directory -Force -Path "$destDir\scripts" | Out-Null
 }
 
 $baseUrl = "https://raw.githubusercontent.com/joao-gaspar/antigravity-gmail-switcher/main"
-$files = @("server.py", "database.py", "start-server.vbs")
 
-foreach ($file in $files) {
-    Write-Host "  ↳ Baixando $file..." -ForegroundColor Yellow
-    Invoke-WebRequest -Uri "$baseUrl/$file" -OutFile "$destDir\$file" -UseBasicParsing
+Write-Host "  ↳ Sincronizando scripts..." -ForegroundColor Yellow
+Invoke-WebRequest -Uri "$baseUrl/server.ps1" -OutFile "$destDir\scripts\server.ps1" -UseBasicParsing
+Invoke-WebRequest -Uri "$baseUrl/gmail-switcher.ps1" -OutFile "$destDir\scripts\gmail-switcher.ps1" -UseBasicParsing
+if (-not (Test-Path "$destDir\accounts.json")) {
+    Invoke-WebRequest -Uri "$baseUrl/accounts.json" -OutFile "$destDir\accounts.json" -UseBasicParsing
 }
 
-# Download initial accounts.json if not present
-if (-not (Test-Path "$skillDir\accounts.json")) {
-    Write-Host "  ↳ Criando pool inicial de contas em accounts.json..." -ForegroundColor Yellow
-    try {
-        Invoke-WebRequest -Uri "https://raw.githubusercontent.com/joao-gaspar/antigravity-gmail-switcher/main/accounts.json" -OutFile "$skillDir\accounts.json" -UseBasicParsing
-    } catch {
-        # Fallback empty accounts pool
-        '{"accounts":[]}' | Out-File -FilePath "$skillDir\accounts.json" -Encoding utf8
-    }
+# Start local server silently in background if not already listening
+if (-not (Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue)) {
+    Write-Host "  ↳ Iniciando monitoramento em segundo plano..." -ForegroundColor Yellow
+    Start-Process powershell -ArgumentList "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$destDir\scripts\server.ps1`"" -WindowStyle Hidden
 }
 
-Write-Host "`n[INFO] Configurando inicializacao automatica..." -ForegroundColor Cyan
-$taskName = "AntigravityServerWatchdog"
-$vbsPath = "$destDir\start-server.vbs"
+# Perform immediate initial check & telemetry sync to Vercel
+Write-Host "  ↳ Transmitindo conta ativa e cotas do $env:COMPUTERNAME..." -ForegroundColor Green
+powershell -ExecutionPolicy Bypass -File "$destDir\scripts\gmail-switcher.ps1" check
 
-# Stop existing processes
-Get-Process python*, wscript -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-Start-Sleep -Milliseconds 500
-
-# 1. Try Windows Scheduled Task (catch permission denied for non-admin users)
-$scheduledTaskOk = $false
-try {
-    $action = New-ScheduledTaskAction -Execute "wscript.exe" -Argument "`"$vbsPath`""
-    $trigger = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
-    $settings = New-ScheduledTaskSettingsSet `
-        -AllowStartIfOnBatteries `
-        -DontStopIfGoingOnBatteries `
-        -ExecutionTimeLimit (New-TimeSpan -Hours 0) `
-        -StartWhenAvailable `
-        -RunOnlyIfNetworkAvailable:$false
-    $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive
-    Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null
-    $scheduledTaskOk = $true
-} catch {
-    Write-Host "  [INFO] Usando pasta de Inicializacao do Windows (sem necessidade de Admin)..." -ForegroundColor Yellow
-}
-
-# 2. Always add fallback to Windows Startup Folder (shell:startup)
-try {
-    $startupFolder = [Environment]::GetFolderPath("Startup")
-    if ($startupFolder -and (Test-Path $startupFolder)) {
-        Copy-Item -Path "$vbsPath" -Destination "$startupFolder\start-server.vbs" -Force -ErrorAction SilentlyContinue
-    }
-} catch {}
-
-# 3. Directly launch server right now
-Write-Host "`n[INFO] Iniciando servico de monitoramento..." -ForegroundColor Cyan
-if ($scheduledTaskOk) {
-    try { Start-ScheduledTask -TaskName $taskName } catch {}
-}
-Start-Process -FilePath "wscript.exe" -ArgumentList "`"$vbsPath`"" -WindowStyle Hidden
-Start-Sleep -Seconds 2
-
-# Check status
-try {
-    $res = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/status" -TimeoutSec 3
-    Write-Host "`n========================================================" -ForegroundColor Green
-    Write-Host " [OK] SUCESSO! Monitor AGS rodando em '$($res.machine.hostname)'" -ForegroundColor Green
-    Write-Host "========================================================`n" -ForegroundColor Green
-} catch {
-    # Fallback: locate python.exe and launch server directly
-    $py = (Get-Command python -ErrorAction SilentlyContinue).Source
-    if (-not $py) { $py = (Get-Command py -ErrorAction SilentlyContinue).Source }
-    if (-not $py) { $py = (Get-Item "$env:LOCALAPPDATA\Programs\Python\Python*\python.exe" -ErrorAction SilentlyContinue | Select-Object -First 1).FullName }
-    if (-not $py) { $py = "python.exe" }
-    
-    Start-Process -FilePath $py -ArgumentList "-u server.py" -WorkingDirectory $destDir -WindowStyle Hidden
-    Start-Sleep -Seconds 2
-    try {
-        $res2 = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/status" -TimeoutSec 3
-        Write-Host "`n========================================================" -ForegroundColor Green
-        Write-Host " [OK] SUCESSO! Monitor AGS rodando em '$($res2.machine.hostname)'" -ForegroundColor Green
-        Write-Host "========================================================`n" -ForegroundColor Green
-    } catch {
-        Write-Host "`n[INFO] Servidor em inicializacao. Recarregue o painel no Vercel." -ForegroundColor Yellow
-    }
-}
+Write-Host "`n[SUCESSO] Computador $env:COMPUTERNAME conectado ao painel web!" -ForegroundColor Green
+Write-Host "Abrindo switcher..." -ForegroundColor Cyan
+Start-Process "https://antigravity-gmail-switcher.vercel.app/?machine=mac-$($env:COMPUTERNAME.ToLower())"
