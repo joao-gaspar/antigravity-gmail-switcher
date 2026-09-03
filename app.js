@@ -1200,13 +1200,8 @@ function fetchCloudSync() {
                 state.machines = cloudData.machines;
                 safeSetStorage('antigravity_cloud_machines_v1', JSON.stringify(state.machines));
                 
-                // Strict per-machine isolation: ONLY match the selected/active machine
-                let activeMachineId = state.selectedMachineId || safeGetStorage('antigravity_my_machine_id');
-                if (!activeMachineId && state.machines && state.machines.length === 1) {
-                    activeMachineId = state.machines[0].machine_id;
-                    state.selectedMachineId = activeMachineId;
-                    safeSetStorage('antigravity_my_machine_id', activeMachineId);
-                }
+                // Strict per-machine isolation: ONLY match this machine's own ID
+                const activeMachineId = state.selectedMachineId || safeGetStorage('antigravity_my_machine_id');
                 const selMachine = (activeMachineId && state.machines) ? state.machines.find(m => m.machine_id === activeMachineId) : null;
 
                 if (selMachine) {
