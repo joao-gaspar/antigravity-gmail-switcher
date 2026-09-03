@@ -1310,21 +1310,27 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
     }
     banner.style.display = 'block';
     
-    // Build machine selector dropdown (ALWAYS rendered)
+    // Build machine selector dropdown
     let machineOptions = '';
+    const isLocalMachine = state.currentMachine && state.currentMachine.machine_id;
+    const localHost = (state.currentMachine && state.currentMachine.hostname) || 'Este Computador';
+    const localUser = (state.currentMachine && state.currentMachine.username) ? ` (${state.currentMachine.username})` : '';
+    
+    // Check if the local machine is already in state.machines
+    const localInMachines = isLocalMachine && state.machines && state.machines.some(m => m.machine_id === state.currentMachine.machine_id);
+    const isLocalSelected = !state.selectedMachineId || state.selectedMachineId === 'local' || (isLocalMachine && state.selectedMachineId === state.currentMachine.machine_id);
+
+    if (!localInMachines) {
+        machineOptions += `<option value="local" ${isLocalSelected ? 'selected' : ''}>💻 ${localHost}${localUser} (Local)</option>`;
+    }
+
     if (state.machines && state.machines.length > 0) {
         state.machines.forEach(m => {
-            const isSel = m.machine_id === state.selectedMachineId ? 'selected' : '';
+            const isSel = (m.machine_id === state.selectedMachineId) || (!state.selectedMachineId && isLocalMachine && m.machine_id === state.currentMachine.machine_id) ? 'selected' : '';
             const userPart = m.username ? ` (${m.username})` : '';
-            const activeMark = m.machine_id === (state.currentMachine && state.currentMachine.machine_id) ? ' ⭐ (Este PC)' : '';
+            const activeMark = isLocalMachine && m.machine_id === state.currentMachine.machine_id ? ' ⭐ (Este PC)' : '';
             machineOptions += `<option value="${m.machine_id}" ${isSel}>💻 ${m.hostname}${userPart}${activeMark}</option>`;
         });
-    } else {
-        const savedHost = safeGetStorage('antigravity_last_hostname') || (state.currentMachine && state.currentMachine.hostname);
-        const savedUser = safeGetStorage('antigravity_last_username') || (state.currentMachine && state.currentMachine.username);
-        const curHost = savedHost || 'Este Computador';
-        const curUser = savedUser ? ` (${savedUser})` : '';
-        machineOptions = `<option value="local">💻 ${curHost}${curUser}</option>`;
     }
 
     const selectorHtml = `
@@ -1400,25 +1406,16 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
         lockOverlay.style.display = 'none';
     }
 
-    // Determine active account display (probe > local selection > fallback)
-    const activeAccObj = state.accounts.find(a => a.id === state.activeAccountId);
-    const displayActiveEmail = agentEmail || (activeAccObj ? activeAccObj.email : null);
-
+    const displayActiveEmail = agentEmail || null;
     const agentPart = displayActiveEmail
         ? `<span style="color:#a78bfa; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:200px;" title="${displayActiveEmail}"><i class="fa-solid fa-user-check" style="font-size:0.6rem;"></i> ${displayActiveEmail}</span>`
-        : `<span style="color:#6b7280;">Nenhuma selecionada</span>`;
+        : `<span style="color:#6b7280;">Sem informação</span>`;
 
-    // Determine next suggested account display (server suggest > next available local account)
-    let displaySuggestEmail = suggestEmail;
-    if (!displaySuggestEmail && state.accounts && state.accounts.length > 0) {
-        const nextAvail = state.accounts.find(a => (a.status === 'available' || !a.status) && a.id !== state.activeAccountId);
-        if (nextAvail) displaySuggestEmail = nextAvail.email;
-    }
-
+    const displaySuggestEmail = suggestEmail || null;
     const sugTitle = suggestReason ? `title="${suggestReason}"` : '';
     const suggestPart = displaySuggestEmail
         ? `<span style="color:#34d399; font-weight:700; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:200px;" onclick="openSuggestLogin('${displaySuggestEmail}')" ${sugTitle} title="${displaySuggestEmail}"><i class="fa-solid fa-angles-right"></i> ⭐ ${displaySuggestEmail}</span>`
-        : `<span style="color:#6b7280; font-style:italic;">Sem alternativa</span>`;
+        : `<span style="color:#6b7280; font-style:italic;">Sem informação</span>`;
 
     banner.innerHTML = `
         <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:5px;">
