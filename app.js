@@ -960,7 +960,10 @@ function fetchCloudSync() {
                 state.machines = cloudData.machines;
                 safeSetStorage('antigravity_cloud_machines_v1', JSON.stringify(state.machines));
                 
-                const selMachine = state.machines.find(m => m.machine_id === state.selectedMachineId) || state.machines[0];
+                const selMachine = state.selectedMachineId 
+                    ? state.machines.find(m => m.machine_id === state.selectedMachineId) 
+                    : (state.machines.find(m => m.machine_id === (state.currentMachine && state.currentMachine.machine_id)) || state.machines[0]);
+
                 if (selMachine) {
                     const cloudActiveEmail = selMachine.active_email;
                     const cloudModelQuotas = selMachine.model_quotas || {};
@@ -993,46 +996,42 @@ function fetchCloudSync() {
                     };
 
                     if (cloudActiveEmail) {
-                        // Only mark as active and write live quotas if no machine is selected yet or if this machine IS the selected machine
-                        const isSelectedMachine = (!state.selectedMachineId) ||
-                                                  (selMachine.machine_id === state.selectedMachineId);
-                        if (isSelectedMachine) {
-                            let detectedAcc = state.accounts.find(a => a.email && a.email.toLowerCase() === cloudActiveEmail.toLowerCase());
-                            if (!detectedAcc) {
-                                // Account from Vercel not in local list — create it so it can be shown as active
-                                const newId = 'acc-' + cloudActiveEmail.replace(/[@.]/g, '-');
-                                detectedAcc = {
-                                    id: newId,
-                                    name: cloudActiveEmail.split('@')[0],
-                                    email: cloudActiveEmail,
-                                    category: cloudActiveEmail.includes('aluno') ? 'clients' : 'work',
-                                    avatarUrl: '',
-                                    theme: 'gradient-purple',
-                                    notes: '',
-                                    status: 'available',
-                                    tokenGemini: null,
-                                    tokenClaude: null,
-                                    tokenGpt: null,
-                                    reset_at: null,
-                                    exhausted_models: []
-                                };
-                                state.accounts.unshift(detectedAcc);
-                                saveAccounts();
-                            }
-                            if (detectedAcc.id !== state.activeAccountId) {
-                                state.activeAccountId = detectedAcc.id;
-                                safeSetStorage('antigravity_active_account_id', state.activeAccountId);
-                            }
-                            detectedAcc.tokenGemini = state.liveQuota.gemini;
-                            detectedAcc.tokenClaude = state.liveQuota.claude;
-                            detectedAcc.tokenGpt    = state.liveQuota.gpt;
-                            detectedAcc.lastMeasuredAt = new Date().toISOString();
-                            if (state.liveQuota.gemini === 0 && state.liveQuota.claude === 0 && state.liveQuota.gpt === 0) {
-                                detectedAcc.status = 'exhausted';
-                            }
+                        let detectedAcc = state.accounts.find(a => a.email && a.email.toLowerCase() === cloudActiveEmail.toLowerCase());
+                        if (!detectedAcc) {
+                            const newId = 'acc-' + cloudActiveEmail.replace(/[@.]/g, '-');
+                            detectedAcc = {
+                                id: newId,
+                                name: cloudActiveEmail.split('@')[0],
+                                email: cloudActiveEmail,
+                                category: cloudActiveEmail.includes('aluno') ? 'clients' : 'work',
+                                avatarUrl: '',
+                                theme: 'gradient-purple',
+                                notes: '',
+                                status: 'available',
+                                tokenGemini: null,
+                                tokenClaude: null,
+                                tokenGpt: null,
+                                reset_at: null,
+                                exhausted_models: []
+                            };
+                            state.accounts.unshift(detectedAcc);
                             saveAccounts();
                         }
+                        if (detectedAcc.id !== state.activeAccountId) {
+                            state.activeAccountId = detectedAcc.id;
+                            safeSetStorage('antigravity_active_account_id', state.activeAccountId);
+                        }
+                        detectedAcc.tokenGemini = state.liveQuota.gemini;
+                        detectedAcc.tokenClaude = state.liveQuota.claude;
+                        detectedAcc.tokenGpt    = state.liveQuota.gpt;
+                        detectedAcc.lastMeasuredAt = new Date().toISOString();
+                        if (state.liveQuota.gemini === 0 && state.liveQuota.claude === 0 && state.liveQuota.gpt === 0) {
+                            detectedAcc.status = 'exhausted';
+                        }
+                        saveAccounts();
                     }
+                } else {
+                    state.liveQuota = { gemini: null, claude: null, gpt: null };
                 }
             }
 
@@ -1051,7 +1050,9 @@ function fetchCloudSync() {
             }
 
             renderAccounts();
-            const activeCloudMachine = state.machines.find(m => m.machine_id === state.selectedMachineId) || state.machines[0];
+            const activeCloudMachine = state.selectedMachineId 
+                ? state.machines.find(m => m.machine_id === state.selectedMachineId)
+                : (state.machines.find(m => m.machine_id === (state.currentMachine && state.currentMachine.machine_id)) || state.machines[0]);
             updateLiveBanner(
                 activeCloudMachine ? activeCloudMachine.active_email : null,
                 activeCloudMachine ? activeCloudMachine.suggest_email : null,
