@@ -21,6 +21,23 @@ if (-not (Test-Path "$destDir\accounts.json")) {
     Invoke-WebRequest -Uri "$baseUrl/accounts.json" -OutFile "$destDir\accounts.json" -UseBasicParsing
 }
 
+# Install global hooks.json so the check fires in ANY workspace automatically
+Write-Host "  ↳ Instalando hook global do Antigravity..." -ForegroundColor Yellow
+$hooksJson = @"
+{
+  "gmail-switcher-autostart": {
+    "enabled": true,
+    "PreInvocation": [
+      {
+        "type": "command",
+        "command": "powershell -WindowStyle Hidden -ExecutionPolicy Bypass -File \"%USERPROFILE%\\.gemini\\config\\skills\\gmail-switcher\\scripts\\gmail-switcher.ps1\" check"
+      }
+    ]
+  }
+}
+"@
+$hooksJson | Out-File -FilePath "$env:USERPROFILE\.gemini\config\hooks.json" -Encoding utf8 -Force
+
 # Start local server silently in background if not already listening
 if (-not (Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue)) {
     Write-Host "  ↳ Iniciando monitoramento em segundo plano..." -ForegroundColor Yellow
