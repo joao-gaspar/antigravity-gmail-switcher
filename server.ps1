@@ -93,7 +93,7 @@ function Get-LanguageServerStatus {
                 foreach ($port in $listeningPorts) {
                     foreach ($proto in @("https", "http")) {
                         try {
-                            $url = "$proto://127.0.0.1:$port/exa.language_server_pb.LanguageServerService/GetUserStatus"
+                            $url = "$($proto)://127.0.0.1:$port/exa.language_server_pb.LanguageServerService/GetUserStatus"
                             [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
                             [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12 -bor [System.Net.SecurityProtocolType]::Tls11 -bor [System.Net.SecurityProtocolType]::Tls
                             $req = [System.Net.HttpWebRequest]::Create($url)
