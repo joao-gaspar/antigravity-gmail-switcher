@@ -1126,7 +1126,7 @@ function processLiveData(data) {
         }
     }
 
-    let geminiMax = null, claudeMin = null, gptMin = null;
+    let geminiMin = null, claudeMin = null, gptMin = null;
     let hasGemini = false, hasClaude = false, hasGpt = false;
 
     if (modelQuotas && typeof modelQuotas === 'object' && Object.keys(modelQuotas).length > 0) {
@@ -1134,12 +1134,12 @@ function processLiveData(data) {
             const rem = typeof info === 'object' ? info.remaining : (typeof info === 'number' ? info : null);
             if (rem !== null && rem !== undefined) {
                 if (/gemini/i.test(lbl)) {
-                    geminiMax = hasGemini ? Math.max(geminiMax, rem) : rem;
+                    geminiMin = hasGemini ? Math.min(geminiMin, rem) : rem;
                     hasGemini = true;
-                } else if (/claude/i.test(lbl)) {
+                } else if (/claude|anthropic|sonnet|opus|haiku/i.test(lbl)) {
                     claudeMin = hasClaude ? Math.min(claudeMin, rem) : rem;
                     hasClaude = true;
-                } else if (/gpt|openai|oss/i.test(lbl)) {
+                } else if (/gpt|openai|oss|o1|o3/i.test(lbl)) {
                     gptMin = hasGpt ? Math.min(gptMin, rem) : rem;
                     hasGpt = true;
                 }
@@ -1148,7 +1148,7 @@ function processLiveData(data) {
     }
 
     state.liveQuota = {
-        gemini: hasGemini ? geminiMax : null,
+        gemini: hasGemini ? geminiMin : null,
         claude: hasClaude ? claudeMin : null,
         gpt:    hasGpt    ? gptMin    : null
     };
@@ -1193,9 +1193,9 @@ function fetchCloudSync() {
                 state.machines = cloudData.machines;
                 safeSetStorage('antigravity_cloud_machines_v1', JSON.stringify(state.machines));
                 
-                const selMachine = state.selectedMachineId 
-                    ? state.machines.find(m => m.machine_id === state.selectedMachineId) 
-                    : (state.currentMachine ? state.machines.find(m => m.machine_id === state.currentMachine.machine_id) : null);
+                // Strict per-machine isolation: ONLY match the local machine itself
+                const localMachineId = state.currentMachine ? state.currentMachine.machine_id : null;
+                const selMachine = localMachineId ? state.machines.find(m => m.machine_id === localMachineId) : null;
 
                 if (selMachine) {
                     const cloudActiveEmail = selMachine.active_email;
@@ -1283,11 +1283,12 @@ function fetchCloudSync() {
             }
 
             renderAccounts();
-            const activeCloudMachine = state.selectedMachineId 
-                ? state.machines.find(m => m.machine_id === state.selectedMachineId)
-                : (state.currentMachine ? state.machines.find(m => m.machine_id === state.currentMachine.machine_id) : null);
+            const activeCloudMachine = (state.currentMachine && state.machines) 
+                ? state.machines.find(m => m.machine_id === state.currentMachine.machine_id)
+                : null;
+
             updateLiveBanner(
-                activeCloudMachine ? activeCloudMachine.active_email : null,
+                activeCloudMachine ? activeCloudMachine.active_email : (state.currentMachine ? state.currentMachine.active_email : null),
                 activeCloudMachine ? activeCloudMachine.suggest_email : null,
                 activeCloudMachine ? activeCloudMachine.last_seen : null,
                 false,
@@ -1310,33 +1311,14 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
     }
     banner.style.display = 'block';
     
-    // Build machine selector dropdown
-    let machineOptions = '';
-    const isLocalMachine = state.currentMachine && state.currentMachine.machine_id;
+    // Strict single-computer identification badge (NO cross-computer dropdown)
     const localHost = (state.currentMachine && state.currentMachine.hostname) || 'Este Computador';
     const localUser = (state.currentMachine && state.currentMachine.username) ? ` (${state.currentMachine.username})` : '';
-    
-    // Check if the local machine is already in state.machines
-    const localInMachines = isLocalMachine && state.machines && state.machines.some(m => m.machine_id === state.currentMachine.machine_id);
-    const isLocalSelected = !state.selectedMachineId || state.selectedMachineId === 'local' || (isLocalMachine && state.selectedMachineId === state.currentMachine.machine_id);
 
-    if (!localInMachines) {
-        machineOptions += `<option value="local" ${isLocalSelected ? 'selected' : ''}>💻 ${localHost}${localUser} (Local)</option>`;
-    }
-
-    if (state.machines && state.machines.length > 0) {
-        state.machines.forEach(m => {
-            const isSel = (m.machine_id === state.selectedMachineId) || (!state.selectedMachineId && isLocalMachine && m.machine_id === state.currentMachine.machine_id) ? 'selected' : '';
-            const userPart = m.username ? ` (${m.username})` : '';
-            const activeMark = isLocalMachine && m.machine_id === state.currentMachine.machine_id ? ' ⭐ (Este PC)' : '';
-            machineOptions += `<option value="${m.machine_id}" ${isSel}>💻 ${m.hostname}${userPart}${activeMark}</option>`;
-        });
-    }
-
-    const selectorHtml = `
-        <select id="machine-selector" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.12); color:#e2e8f0; font-size:0.6rem; padding:3px 8px; border-radius:5px; outline:none; font-weight:600; cursor:pointer; max-width:160px;">
-            ${machineOptions}
-        </select>
+    const machineBadgeHtml = `
+        <div style="display:flex; align-items:center; gap:6px; font-size:0.68rem; font-weight:700; color:#e2e8f0;">
+            <i class="fa-solid fa-laptop" style="color:#60a5fa;"></i> <span>${localHost}${localUser}</span>
+        </div>
     `;
 
     const grid = document.getElementById('accounts-grid');
@@ -1374,7 +1356,7 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
         banner.style.background = 'rgba(239, 68, 68, 0.1)';
         banner.innerHTML = `
             <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:4px;">
-                ${selectorHtml}
+                ${machineBadgeHtml}
                 <button onclick="openSetupModal()" style="background:linear-gradient(135deg, rgba(0,242,254,0.2) 0%, rgba(79,172,254,0.2) 100%); border:1px solid rgba(0,210,255,0.5); color:#00f2fe; font-size:0.58rem; padding:2px 8px; border-radius:5px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:4px; outline:none; box-shadow:0 0 10px rgba(0,242,254,0.2);">
                     <i class="fa-solid fa-wand-magic-sparkles"></i> ✨ Ativar Assistente
                 </button>
@@ -1382,16 +1364,8 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
             </div>
             <div style="display:flex; align-items:center; gap:8px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.05);">
                 <span style="color:#f87171; font-size:0.6rem; font-weight:600;">⚠ Servidor local offline nesta máquina</span>
-                <span style="color:#6b7280; font-size:0.56rem;">(Selecione outro PC acima ou ative o assistente)</span>
             </div>
         `;
-        const selElOffline = document.getElementById('machine-selector');
-        if (selElOffline) {
-            selElOffline.addEventListener('change', (e) => {
-                state.selectedMachineId = e.target.value;
-                renderAccounts();
-            });
-        }
         return;
     }
 
@@ -1419,9 +1393,9 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
 
     banner.innerHTML = `
         <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:5px;">
-            ${selectorHtml}
-            <span style="color:#10b981; font-size:0.6rem; font-weight:700; display:inline-flex; align-items:center; gap:4px; margin-left:auto;">
-                <span style="width:6px; height:6px; background:#10b981; border-radius:50%; display:inline-block; box-shadow:0 0 8px #10b981;"></span> Online
+            ${machineBadgeHtml}
+            <span style="color:${displayActiveEmail ? '#10b981' : '#f59e0b'}; font-size:0.6rem; font-weight:700; display:inline-flex; align-items:center; gap:4px; margin-left:auto;">
+                <span style="width:6px; height:6px; background:${displayActiveEmail ? '#10b981' : '#f59e0b'}; border-radius:50%; display:inline-block; box-shadow:0 0 8px ${displayActiveEmail ? '#10b981' : '#f59e0b'};"></span> ${displayActiveEmail ? 'Online' : 'Sem Conexão Local'}
             </span>
         </div>
         <div style="display:flex; align-items:center; gap:10px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.05); font-size:0.65rem;">
@@ -1432,15 +1406,6 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
             ${suggestPart}
         </div>
     `;
-
-    // Dropdown change listener
-    const selEl = document.getElementById('machine-selector');
-    if (selEl) {
-        selEl.addEventListener('change', (e) => {
-            state.selectedMachineId = e.target.value;
-            renderAccounts();
-        });
-    }
 
     const agentAcc = displayActiveEmail ? state.accounts.find(a => a.email === displayActiveEmail) : null;
     if (agentAcc && (agentAcc.status === 'exhausted' || agentAcc.status === 'rate_limited')) {

@@ -142,9 +142,10 @@ while ($listener.IsListening) {
                 } elseif ($us.modelConfigs) {
                     $configs = $us.modelConfigs
                 }
-                # availableModels is the actual field used in recent Antigravity builds
-                if ($us.availableModels) {
-                    $configs = $us.availableModels
+                if (-not $configs -or @($configs).Count -eq 0) {
+                    if ($us.availableModels) {
+                        $configs = $us.availableModels
+                    }
                 }
 
                 if ($configs) {
