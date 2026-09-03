@@ -8,7 +8,7 @@ let state = {
     searchQuery: '',
     activeNoteAccountId: null,
     selectedPresetTheme: 'gradient-blue',
-    activeAccountId: 'tilab-drive',
+    activeAccountId: null,
     liveQuota: null,
     liveModelQuotas: null,
     liveSuggestEmail: null,
@@ -551,7 +551,7 @@ function loadAccounts() {
         ];
         saveAccounts();
     }
-    state.activeAccountId = safeGetStorage('antigravity_active_account_id') || 'tilab-aluno10';
+    state.activeAccountId = safeGetStorage('antigravity_active_account_id') || null;
 }
 
 function saveAccounts() {
