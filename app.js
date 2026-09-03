@@ -1193,8 +1193,9 @@ function fetchCloudSync() {
                 state.machines = cloudData.machines;
                 safeSetStorage('antigravity_cloud_machines_v1', JSON.stringify(state.machines));
                 
-                // Strict per-machine isolation: ONLY match the local machine itself
-                const localMachineId = state.currentMachine ? state.currentMachine.machine_id : null;
+                // Strict per-machine isolation: ONLY match this device's own machine
+                const savedMyMachine = safeGetStorage('antigravity_my_machine_id');
+                const localMachineId = (state.currentMachine && state.currentMachine.machine_id) || savedMyMachine;
                 const selMachine = localMachineId ? state.machines.find(m => m.machine_id === localMachineId) : null;
 
                 if (selMachine) {
@@ -1283,8 +1284,8 @@ function fetchCloudSync() {
             }
 
             renderAccounts();
-            const activeCloudMachine = (state.currentMachine && state.machines) 
-                ? state.machines.find(m => m.machine_id === state.currentMachine.machine_id)
+            const activeCloudMachine = (localMachineId && state.machines) 
+                ? state.machines.find(m => m.machine_id === localMachineId)
                 : null;
 
             updateLiveBanner(
@@ -1292,7 +1293,8 @@ function fetchCloudSync() {
                 activeCloudMachine ? activeCloudMachine.suggest_email : null,
                 activeCloudMachine ? activeCloudMachine.last_seen : null,
                 false,
-                activeCloudMachine ? activeCloudMachine.suggest_reason : ''
+                activeCloudMachine ? activeCloudMachine.suggest_reason : '',
+                activeCloudMachine
             );
         })
         .catch(() => {
@@ -1300,7 +1302,13 @@ function fetchCloudSync() {
         });
 }
 
-function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false, suggestReason = '') {
+function selectThisDeviceMachine(machineId) {
+    safeSetStorage('antigravity_my_machine_id', machineId);
+    state.selectedMachineId = machineId;
+    fetchCloudSync();
+}
+
+function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false, suggestReason = '', activeCloudMachine = null) {
     let banner = document.getElementById('live-banner');
     if (!banner) {
         banner = document.createElement('div');
@@ -1311,15 +1319,27 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
     }
     banner.style.display = 'block';
     
-    // Strict single-computer identification badge (NO cross-computer dropdown)
-    const localHost = (state.currentMachine && state.currentMachine.hostname) || 'Este Computador';
-    const localUser = (state.currentMachine && state.currentMachine.username) ? ` (${state.currentMachine.username})` : '';
+    const savedMyMachine = safeGetStorage('antigravity_my_machine_id');
+    const localHost = (activeCloudMachine && activeCloudMachine.hostname) || (state.currentMachine && state.currentMachine.hostname) || (savedMyMachine ? savedMyMachine.replace('mac-', '').toUpperCase() : 'Este Computador');
+    const localUser = (activeCloudMachine && activeCloudMachine.username) ? ` (${activeCloudMachine.username})` : ((state.currentMachine && state.currentMachine.username) ? ` (${state.currentMachine.username})` : '');
 
-    const machineBadgeHtml = `
+    let machineBadgeHtml = `
         <div style="display:flex; align-items:center; gap:6px; font-size:0.68rem; font-weight:700; color:#e2e8f0;">
             <i class="fa-solid fa-laptop" style="color:#60a5fa;"></i> <span>${localHost}${localUser}</span>
         </div>
     `;
+
+    // If device is not yet identified and there are multiple cloud machines, show a one-click bind
+    if (!savedMyMachine && !state.currentMachine && state.machines && state.machines.length > 0) {
+        const btns = state.machines.map(m => 
+            `<button onclick="selectThisDeviceMachine('${m.machine_id}')" style="background:rgba(96,165,250,0.15); border:1px solid rgba(96,165,250,0.4); color:#93c5fd; font-size:0.56rem; padding:1px 6px; border-radius:4px; font-weight:700; cursor:pointer;">💻 Sou o ${m.hostname}</button>`
+        ).join(' ');
+        machineBadgeHtml = `
+            <div style="display:flex; align-items:center; gap:6px; font-size:0.62rem; color:#9ca3af;">
+                <span>Dispositivo:</span> ${btns}
+            </div>
+        `;
+    }
 
     const grid = document.getElementById('accounts-grid');
     let lockOverlay = document.getElementById('offline-lock-overlay');
