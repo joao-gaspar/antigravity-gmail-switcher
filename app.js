@@ -1303,13 +1303,8 @@ function fetchCloudSync() {
                 ? state.machines.find(m => m.machine_id === activeMachineId)
                 : null;
 
-            const localActiveAcc = state.accounts.find(a => a.id === state.activeAccountId);
-            const localActiveEmail = localActiveAcc ? localActiveAcc.email : null;
-            const availableAccs = state.accounts.filter(a => a.status === 'available' && a.id !== state.activeAccountId);
-            const localSuggestEmail = availableAccs.length > 0 ? availableAccs[0].email : null;
-
-            const finalActiveEmail = (activeCloudMachine && activeCloudMachine.active_email) ? activeCloudMachine.active_email : localActiveEmail;
-            const finalSuggestEmail = (activeCloudMachine && activeCloudMachine.suggest_email) ? activeCloudMachine.suggest_email : localSuggestEmail;
+            const finalActiveEmail = (activeCloudMachine && activeCloudMachine.active_email) ? activeCloudMachine.active_email : null;
+            const finalSuggestEmail = (activeCloudMachine && activeCloudMachine.suggest_email) ? activeCloudMachine.suggest_email : null;
 
             updateLiveBanner(
                 finalActiveEmail,
@@ -1321,11 +1316,7 @@ function fetchCloudSync() {
             );
         })
         .catch(() => {
-            const localActiveAcc = state.accounts.find(a => a.id === state.activeAccountId);
-            const localActiveEmail = localActiveAcc ? localActiveAcc.email : null;
-            const availableAccs = state.accounts.filter(a => a.status === 'available' && a.id !== state.activeAccountId);
-            const localSuggestEmail = availableAccs.length > 0 ? availableAccs[0].email : null;
-            updateLiveBanner(localActiveEmail, localSuggestEmail, null, false);
+            updateLiveBanner(null, null, null, false);
         });
 }
 
