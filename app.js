@@ -683,9 +683,8 @@ function renderAccounts() {
                 </div>`;
             }
             const safeRem = Math.max(0, Math.min(1, remFrac));
-            const consumedFrac = 1 - safeRem;
-            const pct = Math.round(consumedFrac * 100);
-            const col = pct <= 50 ? '#34d399' : pct <= 85 ? '#f59e0b' : '#ef4444';
+            const pct = Math.round(safeRem * 100);
+            const col = pct >= 50 ? '#34d399' : pct >= 20 ? '#f59e0b' : '#ef4444';
             return `
             <div style="display:flex; align-items:center; gap:4px; margin-bottom:2px;">
                 <span style="font-size:0.58rem; color:${col}; min-width:68px; font-weight:600;">${label}</span>
@@ -696,12 +695,12 @@ function renderAccounts() {
             </div>`;
         };
 
-        const qCG = (qC !== null || qP !== null) ? Math.max(qC ?? 0, qP ?? 0) : null;
+        const qCG = (qC !== null || qP !== null) ? Math.min(qC ?? 1, qP ?? 1) : null;
         const quotaBarsHtml = `
         <div style="margin-top:4px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.06);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
                 <span style="font-size:0.54rem; color:#9ca3af; font-weight:600;">Modelo</span>
-                <span style="font-size:0.54rem; color:#9ca3af; font-weight:600;">Consumo</span>
+                <span style="font-size:0.54rem; color:#9ca3af; font-weight:600;">Disponível</span>
             </div>
             ${renderBar(qG, 'Gemini')}
             ${renderBar(qCG, 'Claude / GPT')}
