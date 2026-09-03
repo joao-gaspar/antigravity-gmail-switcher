@@ -316,55 +316,56 @@ function Get-SuggestedNextAccount {
 # ── Core Check ────────────────────────────────────────────────────────────────
 function Invoke-Check {
     param([bool]$Silent=$false)
-    $active=Get-ActiveAccounts
-    $agent=$active | Where-Object {$_.Role -eq "Agente"} | Select-Object -First 1
-    if(-not $agent -or -not $agent.Email){
-        if(-not $Silent){Write-Host "  [CHECK] Nenhum agente detectado." -ForegroundColor DarkGray}; return @()
+    $active = Get-ActiveAccounts
+    $agent = $active | Where-Object {$_.Role -eq "Agente"} | Select-Object -First 1
+    if (-not $agent -or -not $agent.Email) {
+        $agent = $active | Where-Object {$_.Email} | Select-Object -First 1
     }
-    $quotaMap=Get-ModelQuotaMap -userStatus $agent.UserStatus
-    $prevState=Load-WatchState
-    $msgs=Update-AccountFromLiveData -CurrentEmail $agent.Email -CurrentName $agent.Name -QuotaMap $quotaMap -PreviousState $prevState
 
-    # Salva watch_state
-    $snap=[ordered]@{}
-    foreach($k in $quotaMap.Keys){$snap[$k]=@{remaining=$quotaMap[$k].remaining;resetTime=$quotaMap[$k].resetTime}}
-    Save-WatchState ([PSCustomObject]@{
-        last_check=$((Get-Date).ToString("yyyy-MM-ddTHH:mm:ss"))
-        agent_email=$agent.Email; agent_name=$agent.Name
-        agent_pid=$agent.PID; agent_port=$agent.Port
-        model_quotas=$snap
-    })
+    $email = if ($agent) { $agent.Email } else { $null }
+    $name  = if ($agent) { $agent.Name } else { "" }
+    $pidV  = if ($agent) { $agent.PID } else { 0 }
+    $portV = if ($agent) { $agent.Port } else { 0 }
+    $quotaMap = if ($agent) { Get-ModelQuotaMap -userStatus $agent.UserStatus } else { @{} }
+    
+    $snap = [ordered]@{}
+    foreach ($k in $quotaMap.Keys) {
+        $snap[$k] = @{ remaining = $quotaMap[$k].remaining; resetTime = $quotaMap[$k].resetTime }
+    }
 
-    # Sincronizacao automatica nativa com a Vercel Cloud (sem necessidade de daemon ou .bat)
+    $msgs = @()
+    if ($email) {
+        $prevState = Load-WatchState
+        $msgs = Update-AccountFromLiveData -CurrentEmail $email -CurrentName $name -QuotaMap $quotaMap -PreviousState $prevState
+        Save-WatchState ([PSCustomObject]@{
+            last_check   = ((Get-Date).ToString("yyyy-MM-ddTHH:mm:ss"))
+            agent_email  = $email
+            agent_name   = $name
+            agent_pid    = $pidV
+            agent_port   = $portV
+            model_quotas = $snap
+        })
+    } else {
+        if (-not $Silent) { Write-Host "  [CHECK] Nenhum language server com email detectado." -ForegroundColor DarkGray }
+    }
+
+    # Sincronizacao automatica nativa com a Vercel Cloud
     try {
         $syncPayload = @{
             machine_id   = "mac-" + $env:COMPUTERNAME.ToLower()
             hostname     = $env:COMPUTERNAME
             username     = $env:USERNAME
-            active_email = $agent.Email
+            active_email = $email
             model_quotas = $snap
             last_seen    = (Get-Date).ToString("o")
         } | ConvertTo-Json -Depth 6 -Compress
-        $null = Invoke-RestMethod -Uri "https://antigravity-gmail-switcher.vercel.app/api/sync" -Method POST -Body $syncPayload -ContentType "application/json" -TimeoutSec 4
+        $null = Invoke-RestMethod -Uri "https://antigravity-gmail-switcher.vercel.app/api/sync" -Method POST -Body $syncPayload -ContentType "application/json" -TimeoutSec 5
     } catch {}
 
-    if(-not $Silent){
-        foreach($msg in $msgs){
-            $col=if($msg -match '^AUTO-LIMIT|^TROCA'){"Yellow"}elseif($msg -match '^MODELO ESGOTADO'){"Red"}elseif($msg -match '^AVISO'){"DarkYellow"}else{"DarkGray"}
+    if (-not $Silent) {
+        foreach ($msg in $msgs) {
+            $col = if ($msg -match '^AUTO-LIMIT|^TROCA') { "Yellow" } elseif ($msg -match '^MODELO ESGOTADO') { "Red" } elseif ($msg -match '^AVISO') { "DarkYellow" } else { "DarkGray" }
             Write-Host "  $msg" -ForegroundColor $col
-        }
-        # Sugestao se conta esgotada
-        $data=Load-Accounts; $ca=Resolve-Account $agent.Email $data.accounts
-        if($ca -and $ca.status -eq 'rate_limited'){
-            Write-Host ""; Write-Host "  [!] Conta ativa ESGOTADA. Proxima recomendada:" -ForegroundColor Red
-            $next=Get-SuggestedNextAccount $data
-            if($next){Write-Host "      $($next.label)  ($($next.email))" -ForegroundColor Green; Write-Host "      Execute: .\gmail-switcher.ps1 best" -ForegroundColor DarkGray}
-            else{
-                Write-Host "      Nenhuma conta disponivel." -ForegroundColor Red
-                @($data.accounts|Where-Object{$_.reset_at}|Sort-Object{[datetime]::Parse($_.reset_at)}|Select-Object -First 3) | ForEach-Object {
-                    Write-Host "      $($_.label): $(Format-TimeSpan (Get-TimeRemaining $_.reset_at))" -ForegroundColor DarkGray
-                }
-            }
         }
     }
     return $msgs
@@ -384,6 +385,10 @@ switch ($Command.ToLower()) {
         Write-Host " $($a.Name)  <$($a.Email)>  PID $($a.PID) :$($a.Port)" -ForegroundColor White
     }
     Write-Host ""; Invoke-Check -Silent $false | Out-Null
+    $machineId = "mac-" + $env:COMPUTERNAME.ToLower()
+    $dashUrl = "https://antigravity-gmail-switcher.vercel.app/?machine=$machineId"
+    Write-Host "  Abrindo dashboard: $dashUrl" -ForegroundColor DarkGray
+    Start-Process $dashUrl
     Write-Host ""; Write-Host "  watch_state: $WatchFile" -ForegroundColor DarkGray
     Write-Host "=====================================================" -ForegroundColor Cyan; Write-Host ""
 }
