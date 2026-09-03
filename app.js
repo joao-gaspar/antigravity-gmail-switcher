@@ -78,9 +78,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const saved = safeGetStorage('antigravity_my_machine_id');
         if (saved) {
             state.selectedMachineId = saved;
-        } else {
-            // First visit on a new machine with no machine_id stored — show activation banner
-            showFirstRunBanner();
         }
     }
     checkAuth();
@@ -91,42 +88,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setInterval(updateTimers, 1000);
     setInterval(fetchCloudSync, 15000);
 });
-
-function showFirstRunBanner() {
-    const setupCmd = 'irm https://antigravity-gmail-switcher.vercel.app/setup.ps1 | iex';
-    const banner = document.createElement('div');
-    banner.id = 'first-run-banner';
-    banner.style.cssText = `
-        position:fixed; inset:0; z-index:99998;
-        background:rgba(8,8,12,0.96); backdrop-filter:blur(16px);
-        display:flex; align-items:center; justify-content:center;
-        font-family:'Outfit',sans-serif;
-    `;
-    banner.innerHTML = `
-        <div style="width:360px; background:rgba(255,255,255,0.03); border:1px solid rgba(99,102,241,0.35); border-radius:18px; padding:32px 28px; display:flex; flex-direction:column; gap:18px; text-align:center; box-shadow:0 24px 60px rgba(0,0,0,0.6);">
-            <div style="width:52px; height:52px; background:linear-gradient(135deg,#6366f1 0%,#a78bfa 100%); border-radius:14px; display:flex; align-items:center; justify-content:center; margin:0 auto; font-size:1.4rem; color:#fff; box-shadow:0 0 20px rgba(99,102,241,0.35);">
-                <i class="fa-solid fa-plug-circle-bolt"></i>
-            </div>
-            <div>
-                <h3 style="color:#fff; font-size:1.1rem; font-weight:700; margin:0 0 6px;">Conectar este computador</h3>
-                <p style="color:#94a3b8; font-size:0.75rem; line-height:1.5; margin:0;">Este computador ainda não está conectado ao painel. Clique no botão abaixo e cole o comando no <strong style="color:#e2e8f0;">PowerShell</strong> para ativar a detecção automática em 1 passo.</p>
-            </div>
-            <div style="background:rgba(0,0,0,0.35); border:1px solid rgba(99,102,241,0.25); border-radius:10px; padding:12px 14px; text-align:left; position:relative;">
-                <code id="setup-cmd-display" style="font-size:0.65rem; color:#818cf8; word-break:break-all; font-family:monospace;">${setupCmd}</code>
-            </div>
-            <button id="btn-copy-activate" onclick="
-                navigator.clipboard.writeText('${setupCmd}').then(() => {
-                    this.innerHTML = '<i class=\\'fa-solid fa-check\\'></i> Copiado! Cole no PowerShell';
-                    this.style.background = 'linear-gradient(135deg,#10b981 0%,#059669 100%)';
-                });
-            " style="width:100%; padding:13px 20px; background:linear-gradient(135deg,#6366f1 0%,#a78bfa 100%); color:#fff; border:none; border-radius:10px; font-weight:700; font-size:0.88rem; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 4px 20px rgba(99,102,241,0.4); transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
-                <i class="fa-solid fa-copy"></i> Copiar Comando de Ativação
-            </button>
-            <button onclick="document.getElementById('first-run-banner').remove(); localStorage.setItem('antigravity_my_machine_id','mac-unknown');" style="background:none; border:none; color:#64748b; font-size:0.72rem; cursor:pointer; text-decoration:underline;">Pular (usar sem detecção automática)</button>
-        </div>
-    `;
-    document.body.appendChild(banner);
-}
 
 function safeGetStorage(key) {
     try {
