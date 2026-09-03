@@ -1069,19 +1069,19 @@ function fetchSingleEndpoint(url) {
 }
 
 function fetchLive() {
-    const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const isHttps = window.location.protocol === 'https:';
+    if (isHttps) {
+        fetchCloudSync();
+        return;
+    }
 
-    fetchSingleEndpoint('http://127.0.0.1:8000/api/live')
+    fetchSingleEndpoint('/api/live')
         .then(data => {
             if (data && data.machine) {
                 state.currentMachine = data.machine;
-                if (!state.selectedMachineId) {
-                    state.selectedMachineId = data.machine.machine_id;
-                    safeSetStorage('antigravity_selected_machine_id', data.machine.machine_id);
-                }
+                state.selectedMachineId = data.machine.machine_id;
             }
             processLiveData(data);
-            fetchCloudSync();
         })
         .catch(() => {
             fetchCloudSync();
@@ -1355,65 +1355,6 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
         `;
     }
 
-    const grid = document.getElementById('accounts-grid');
-    let lockOverlay = document.getElementById('offline-lock-overlay');
-
-    if (isOffline) {
-        if (grid) {
-            grid.style.filter = 'grayscale(0.85) opacity(0.38)';
-            grid.style.pointerEvents = 'none';
-            grid.style.userSelect = 'none';
-            grid.style.transition = 'filter 0.4s ease, opacity 0.4s ease';
-        }
-
-        if (!lockOverlay) {
-            lockOverlay = document.createElement('div');
-            lockOverlay.id = 'offline-lock-overlay';
-            lockOverlay.style.cssText = 'margin:10px 0 14px 0; padding:16px; background:rgba(239,68,68,0.08); border:1px dashed rgba(239,68,68,0.4); border-radius:12px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:8px; box-shadow:0 8px 24px rgba(0,0,0,0.3); backdrop-filter:blur(4px);';
-            const section = document.getElementById('view-accounts');
-            if (section && grid) section.insertBefore(lockOverlay, grid);
-        }
-        lockOverlay.style.display = 'flex';
-        lockOverlay.innerHTML = `
-            <div style="display:flex; align-items:center; gap:8px;">
-                <span style="font-size:1.2rem; color:#f87171;"><i class="fa-solid fa-plug-circle-xmark"></i></span>
-                <span style="font-size:0.82rem; font-weight:700; color:#f87171;">Servidor Local Offline neste Computador</span>
-            </div>
-            <p style="font-size:0.68rem; color:#9ca3af; max-width:380px; margin:0; line-height:1.4;">
-                As contas abaixo estão <strong style="color:#ef4444;">esmaecidas e travadas</strong> porque o assistente local do AGS não está rodando nesta máquina.
-            </p>
-            <button onclick="openSetupModal()" style="background:linear-gradient(135deg, #00f2fe 0%, #4facfe 100%); border:none; color:#0f172a; font-size:0.72rem; padding:7px 16px; border-radius:8px; font-weight:800; cursor:pointer; display:flex; align-items:center; gap:6px; box-shadow:0 0 15px rgba(0,242,254,0.4); margin-top:4px; outline:none;">
-                <i class="fa-solid fa-wand-magic-sparkles"></i> ✨ Ativar Assistente do AGS neste PC
-            </button>
-        `;
-
-        banner.style.background = 'rgba(239, 68, 68, 0.1)';
-        banner.innerHTML = `
-            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:4px;">
-                ${machineBadgeHtml}
-                <button onclick="openSetupModal()" style="background:linear-gradient(135deg, rgba(0,242,254,0.2) 0%, rgba(79,172,254,0.2) 100%); border:1px solid rgba(0,210,255,0.5); color:#00f2fe; font-size:0.58rem; padding:2px 8px; border-radius:5px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:4px; outline:none; box-shadow:0 0 10px rgba(0,242,254,0.2);">
-                    <i class="fa-solid fa-wand-magic-sparkles"></i> ✨ Ativar Assistente
-                </button>
-                <span style="color:#ef4444; font-size:0.56rem; font-weight:bold; margin-left:auto;">DISCONNECTED</span>
-            </div>
-            <div style="display:flex; align-items:center; gap:8px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.05);">
-                <span style="color:#f87171; font-size:0.6rem; font-weight:600;">⚠ Servidor local offline nesta máquina</span>
-            </div>
-        `;
-        return;
-    }
-
-    // Restore online state: remove dimming & hide lock overlay
-    if (grid) {
-        grid.style.filter = 'none';
-        grid.style.opacity = '1';
-        grid.style.pointerEvents = 'auto';
-        grid.style.userSelect = 'auto';
-    }
-    if (lockOverlay) {
-        lockOverlay.style.display = 'none';
-    }
-
     const displayActiveEmail = agentEmail || null;
     const agentPart = displayActiveEmail
         ? `<span style="color:#a78bfa; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:200px;" title="${displayActiveEmail}"><i class="fa-solid fa-user-check" style="font-size:0.6rem;"></i> ${displayActiveEmail}</span>`
@@ -1429,7 +1370,7 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
         <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:5px;">
             ${machineBadgeHtml}
             <span style="color:${displayActiveEmail ? '#10b981' : '#f59e0b'}; font-size:0.6rem; font-weight:700; display:inline-flex; align-items:center; gap:4px; margin-left:auto;">
-                <span style="width:6px; height:6px; background:${displayActiveEmail ? '#10b981' : '#f59e0b'}; border-radius:50%; display:inline-block; box-shadow:0 0 8px ${displayActiveEmail ? '#10b981' : '#f59e0b'};"></span> ${displayActiveEmail ? 'Online' : 'Sem Conexão Local'}
+                <span style="width:6px; height:6px; background:${displayActiveEmail ? '#10b981' : '#f59e0b'}; border-radius:50%; display:inline-block; box-shadow:0 0 8px ${displayActiveEmail ? '#10b981' : '#f59e0b'};"></span> ${displayActiveEmail ? 'Online' : 'Aguardando Sincronização'}
             </span>
         </div>
         <div style="display:flex; align-items:center; gap:10px; padding-top:4px; border-top:1px solid rgba(255,255,255,0.05); font-size:0.65rem;">
