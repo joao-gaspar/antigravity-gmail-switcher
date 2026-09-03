@@ -61,14 +61,26 @@ const elements = {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Read machine identity from URL ?machine= param (set by gmail-switcher.ps1 check)
+    const urlParams = new URLSearchParams(window.location.search);
+    const machineFromUrl = urlParams.get('machine');
+    if (machineFromUrl) {
+        safeSetStorage('antigravity_my_machine_id', machineFromUrl);
+        state.selectedMachineId = machineFromUrl;
+        // Clean URL without reloading
+        const cleanUrl = window.location.pathname + window.location.hash;
+        window.history.replaceState({}, '', cleanUrl);
+    } else {
+        const saved = safeGetStorage('antigravity_my_machine_id');
+        if (saved) state.selectedMachineId = saved;
+    }
     checkAuth();
     loadAccounts();
     setupEventListeners();
     renderAccounts();
-    updateLiveBanner(null, null, null, true);
+    fetchCloudSync();
     setInterval(updateTimers, 1000);
-    fetchLive();
-    setInterval(fetchLive, 3000);
+    setInterval(fetchCloudSync, 15000);
 });
 
 function safeGetStorage(key) {
@@ -1315,32 +1327,13 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
     }
     banner.style.display = 'block';
     
-    const activeMachineId = state.selectedMachineId || safeGetStorage('antigravity_my_machine_id') || 'mac-ebbim';
+    const activeMachineId = state.selectedMachineId || safeGetStorage('antigravity_my_machine_id');
+    const activeMachine = activeMachineId && state.machines ? state.machines.find(m => m.machine_id === activeMachineId) : null;
+    const hostname = (activeMachine && activeMachine.hostname) || (activeMachineId ? activeMachineId.replace('mac-', '').toUpperCase() : '');
 
-    // List of available machines (always including EBBIM and LAPTOP)
-    const machineList = (state.machines && state.machines.length > 0) ? [...state.machines] : [
-        { machine_id: 'mac-ebbim', hostname: 'EBBIM' },
-        { machine_id: 'mac-laptop', hostname: 'LAPTOP' }
-    ];
-
-    if (!machineList.some(m => m.machine_id === 'mac-laptop' || m.hostname === 'LAPTOP')) {
-        machineList.push({ machine_id: 'mac-laptop', hostname: 'LAPTOP' });
-    }
-
-    const btns = machineList.map(m => {
-        const isSel = m.machine_id === activeMachineId;
-        const bg = isSel ? 'linear-gradient(135deg, rgba(96,165,250,0.4) 0%, rgba(168,85,247,0.4) 100%)' : 'rgba(255,255,255,0.06)';
-        const border = isSel ? '1px solid #60a5fa' : '1px solid rgba(255,255,255,0.12)';
-        const color = isSel ? '#ffffff' : '#9ca3af';
-        return `<button onclick="selectThisDeviceMachine('${m.machine_id}')" style="background:${bg}; border:${border}; color:${color}; font-size:0.62rem; padding:3px 10px; border-radius:6px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:5px;">💻 ${m.hostname}</button>`;
-    }).join(' ');
-
-    const machineBadgeHtml = `
-        <div style="display:flex; align-items:center; gap:6px;">
-            <span style="font-size:0.56rem; color:#6b7280; font-weight:700;">MÁQUINA:</span>
-            ${btns}
-        </div>
-    `;
+    const machineBadgeHtml = hostname
+        ? `<div style="display:flex; align-items:center; gap:6px; font-size:0.68rem; font-weight:700; color:#e2e8f0;"><i class="fa-solid fa-laptop" style="color:#60a5fa;"></i> <span>${hostname}</span></div>`
+        : '';
 
     const displayActiveEmail = agentEmail || null;
     const agentPart = displayActiveEmail
