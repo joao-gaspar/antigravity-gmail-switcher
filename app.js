@@ -84,9 +84,9 @@ document.addEventListener('DOMContentLoaded', () => {
     loadAccounts();
     setupEventListeners();
     renderAccounts();
-    fetchCloudSync();
+    pollLocalServer();
     setInterval(updateTimers, 1000);
-    setInterval(fetchCloudSync, 15000);
+    setInterval(pollLocalServer, 5000);
 });
 
 function safeGetStorage(key) {
@@ -1184,6 +1184,154 @@ function processLiveData(data) {
     updateLiveBanner(agentEmail, suggestEmail, lastCheck, false, data.suggestReason);
 }
 
+async function pollLocalServer() {
+    const candidatePorts = [8000, 8999, 8998, 8997, 8996, 8995];
+    for (const port of candidatePorts) {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 1200);
+            const res = await fetch(`http://127.0.0.1:${port}/api/live`, {
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.status === 'ok') {
+                    handleLocalLiveData(data);
+                    return true;
+                }
+            }
+        } catch (e) {
+            // port not available, try next
+        }
+    }
+    // Fall back to cloud sync if local server is not listening
+    fetchCloudSync();
+    return false;
+}
+
+function handleLocalLiveData(data) {
+    const hostname = (data.machine && data.machine.hostname) ? data.machine.hostname : '';
+    const machineId = (data.machine && data.machine.machine_id) ? data.machine.machine_id : (hostname ? 'mac-' + hostname.toLowerCase() : null);
+    
+    if (machineId) {
+        state.selectedMachineId = machineId;
+        safeSetStorage('antigravity_my_machine_id', machineId);
+    }
+    
+    const agentEmail = (data.agent && data.agent.email) ? data.agent.email : null;
+    const modelQuotas = data.modelQuotas || {};
+    
+    let geminiMin = null, claudeMin = null, gptMin = null;
+    let hasGemini = false, hasClaude = false, hasGpt = false;
+    
+    if (modelQuotas && typeof modelQuotas === 'object' && Object.keys(modelQuotas).length > 0) {
+        for (const [lbl, info] of Object.entries(modelQuotas)) {
+            const rem = typeof info === 'object' ? info.remaining : (typeof info === 'number' ? info : null);
+            if (rem !== null && rem !== undefined) {
+                if (/gemini/i.test(lbl)) {
+                    geminiMin = hasGemini ? Math.min(geminiMin, rem) : rem;
+                    hasGemini = true;
+                } else if (/claude|anthropic|sonnet|opus|haiku/i.test(lbl)) {
+                    claudeMin = hasClaude ? Math.min(claudeMin, rem) : rem;
+                    hasClaude = true;
+                } else if (/gpt|openai|oss|o1|o3/i.test(lbl)) {
+                    gptMin = hasGpt ? Math.min(gptMin, rem) : rem;
+                    hasGpt = true;
+                }
+            }
+        }
+    }
+    
+    state.liveQuota = {
+        gemini: hasGemini ? geminiMin : null,
+        claude: hasClaude ? claudeMin : null,
+        gpt:    hasGpt    ? gptMin    : null
+    };
+    state.liveAgentEmail = agentEmail;
+    state.liveModelQuotas = modelQuotas;
+    state.liveLastCheck = new Date().toISOString();
+    
+    if (agentEmail) {
+        let liveAcc = state.accounts.find(a => a.email && a.email.toLowerCase() === agentEmail.toLowerCase());
+        if (!liveAcc) {
+            const newId = 'acc-' + agentEmail.replace(/[@.]/g, '-');
+            liveAcc = {
+                id: newId,
+                name: agentEmail.split('@')[0],
+                email: agentEmail,
+                category: agentEmail.includes('aluno') ? 'clients' : 'work',
+                avatarUrl: '',
+                theme: 'gradient-purple',
+                notes: '',
+                status: 'available',
+                tokenGemini: null,
+                tokenClaude: null,
+                tokenGpt: null,
+                reset_at: null,
+                exhausted_models: []
+            };
+            state.accounts.unshift(liveAcc);
+            saveAccounts();
+        }
+        if (liveAcc.id !== state.activeAccountId) {
+            state.activeAccountId = liveAcc.id;
+            safeSetStorage('antigravity_active_account_id', state.activeAccountId);
+        }
+        liveAcc.tokenGemini = state.liveQuota.gemini;
+        liveAcc.tokenClaude = state.liveQuota.claude;
+        liveAcc.tokenGpt    = state.liveQuota.gpt;
+        liveAcc.lastMeasuredAt = new Date().toISOString();
+        if (state.liveQuota.gemini === 0 && state.liveQuota.claude === 0 && state.liveQuota.gpt === 0) {
+            liveAcc.status = 'exhausted';
+        }
+        saveAccounts();
+    }
+    
+    // Auto-calculate best recommended next account
+    const sorted = sortAccountsSmart(state.accounts);
+    const nextAcc = sorted.find(a => (!agentEmail || a.email.toLowerCase() !== agentEmail.toLowerCase()) && a.status !== 'exhausted' && a.status !== 'rate_limited');
+    const suggestEmail = nextAcc ? nextAcc.email : null;
+    const suggestReason = nextAcc ? 'Maior disponibilidade de tokens' : '';
+    state.liveSuggestEmail = suggestEmail;
+    
+    renderAccounts();
+    updateLiveBanner(
+        agentEmail,
+        suggestEmail,
+        state.liveLastCheck,
+        false,
+        suggestReason,
+        {
+            hostname: hostname,
+            machine_id: machineId,
+            active_email: agentEmail,
+            suggest_email: suggestEmail,
+            suggest_reason: suggestReason,
+            model_quotas: modelQuotas,
+            last_seen: state.liveLastCheck
+        }
+    );
+    
+    // Sync to cloud in background
+    if (machineId && hostname) {
+        fetch('/api/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                machine_id: machineId,
+                hostname: hostname,
+                username: (data.machine && data.machine.username) || '',
+                active_email: agentEmail,
+                suggest_email: suggestEmail,
+                suggest_reason: suggestReason,
+                model_quotas: modelQuotas,
+                last_seen: state.liveLastCheck
+            })
+        }).catch(() => {});
+    }
+}
+
 function fetchCloudSync() {
     let cachedMachines = [];
     try {
@@ -1202,8 +1350,13 @@ function fetchCloudSync() {
                 state.machines = cloudData.machines;
                 safeSetStorage('antigravity_cloud_machines_v1', JSON.stringify(state.machines));
                 
-                // Strict per-machine isolation: ONLY match this machine's own ID
-                const activeMachineId = state.selectedMachineId || safeGetStorage('antigravity_my_machine_id');
+                // Strict per-machine isolation: match selected machine ID or first available
+                let activeMachineId = state.selectedMachineId || safeGetStorage('antigravity_my_machine_id');
+                if (!activeMachineId && state.machines.length === 1) {
+                    activeMachineId = state.machines[0].machine_id;
+                    state.selectedMachineId = activeMachineId;
+                    safeSetStorage('antigravity_my_machine_id', activeMachineId);
+                }
                 const selMachine = (activeMachineId && state.machines) ? state.machines.find(m => m.machine_id === activeMachineId) : null;
 
                 if (selMachine) {
@@ -1278,6 +1431,8 @@ function fetchCloudSync() {
             }
 
             // Only merge cloud account data when we have a matched machine
+            const activeMachineId = state.selectedMachineId || safeGetStorage('antigravity_my_machine_id');
+            const selMachine = (activeMachineId && state.machines) ? state.machines.find(m => m.machine_id === activeMachineId) : null;
             if (selMachine && cloudData && cloudData.accounts && cloudData.accounts.length > 0) {
                 cloudData.accounts.forEach(ca => {
                     if (!ca.email) return;
@@ -1293,7 +1448,6 @@ function fetchCloudSync() {
             }
 
             renderAccounts();
-            const activeMachineId = state.selectedMachineId || safeGetStorage('antigravity_my_machine_id');
             const activeCloudMachine = (state.machines && activeMachineId)
                 ? state.machines.find(m => m.machine_id === activeMachineId)
                 : null;
@@ -1303,10 +1457,16 @@ function fetchCloudSync() {
                 || (state.liveAgentEmail)
                 || null;
 
-            const finalSuggestEmail = (activeCloudMachine && activeCloudMachine.suggest_email)
+            let finalSuggestEmail = (activeCloudMachine && activeCloudMachine.suggest_email)
                 || (state.currentMachine && state.currentMachine.suggest_email)
                 || (state.liveSuggestEmail)
                 || null;
+
+            if (!finalSuggestEmail && finalActiveEmail) {
+                const sorted = sortAccountsSmart(state.accounts);
+                const next = sorted.find(a => a.email && a.email.toLowerCase() !== finalActiveEmail.toLowerCase() && a.status !== 'exhausted' && a.status !== 'rate_limited');
+                if (next) finalSuggestEmail = next.email;
+            }
 
             const finalLastSeen = (activeCloudMachine && activeCloudMachine.last_seen)
                 || (state.currentMachine && state.currentMachine.last_seen)
@@ -1315,7 +1475,7 @@ function fetchCloudSync() {
 
             const finalSuggestReason = (activeCloudMachine && activeCloudMachine.suggest_reason)
                 || (state.currentMachine && state.currentMachine.suggest_reason)
-                || '';
+                || (finalSuggestEmail ? 'Maior capacidade disponível' : '');
 
             updateLiveBanner(
                 finalActiveEmail,
@@ -1328,7 +1488,12 @@ function fetchCloudSync() {
         })
         .catch(() => {
             const finalActiveEmail = (state.currentMachine && state.currentMachine.active_email) || state.liveAgentEmail || null;
-            const finalSuggestEmail = (state.currentMachine && state.currentMachine.suggest_email) || state.liveSuggestEmail || null;
+            let finalSuggestEmail = (state.currentMachine && state.currentMachine.suggest_email) || state.liveSuggestEmail || null;
+            if (!finalSuggestEmail && finalActiveEmail) {
+                const sorted = sortAccountsSmart(state.accounts);
+                const next = sorted.find(a => a.email && a.email.toLowerCase() !== finalActiveEmail.toLowerCase() && a.status !== 'exhausted' && a.status !== 'rate_limited');
+                if (next) finalSuggestEmail = next.email;
+            }
             updateLiveBanner(finalActiveEmail, finalSuggestEmail, state.liveLastCheck, false, '', state.currentMachine);
         });
 }
