@@ -30,76 +30,139 @@ Write-Host "AGS Server running on http://127.0.0.1:$activePort/"
 function Get-LanguageServerStatus {
     try {
         $rawProcs = Get-CimInstance Win32_Process | Where-Object { $_.Name -like 'language_server*' }
-        if (-not $rawProcs) { return $null }
-
-        # Prioritize Agente process (WITHOUT --enable_lsp) over IDE Geral (with --enable_lsp), matching gmail-switcher.ps1
-        $procs = $rawProcs | Sort-Object @{Expression={
-            if ($_.CommandLine -and -not $_.CommandLine.Contains("--enable_lsp")) { 0 } else { 1 }
-        }}, @{Expression={[long]$_.ProcessId}; Descending=$true}
-
-        $netstat = netstat -ano 2>$null
-
-        foreach ($p in $procs) {
-            $cl = $p.CommandLine
-            $pidVal = $p.ProcessId
-            if (-not $cl) { continue }
-
-            $m = [regex]::Match($cl, '--csrf_token[=\s]+([\w-]+)')
-            if (-not $m.Success) { continue }
-            $csrf = $m.Groups[1].Value
-
-            $listeningPorts = @()
-            if ($cl -match '--https_server_port\s+(\d+)') {
-                $listeningPorts += [int]$Matches[1]
+        if (-not $rawProcs) {
+            $rawProcs = Get-Process -Name "*language_server*" -ErrorAction SilentlyContinue | ForEach-Object {
+                try {
+                    $wmi = Get-WmiObject Win32_Process -Filter "ProcessId = $($_.Id)" -ErrorAction SilentlyContinue
+                    if ($wmi) { $wmi } else { $_ }
+                } catch { $_ }
             }
-            foreach ($line in ($netstat -split "\r?\n")) {
-                if ($line -match "LISTENING\s+$pidVal`$" -and $line -match '127\.0\.0\.1:(\d+)') {
-                    $portFound = [int]$Matches[1]
-                    if ($portFound -notin $listeningPorts) {
-                        $listeningPorts += $portFound
+        }
+
+        if ($rawProcs) {
+            # Prioritize Agente process (WITHOUT --enable_lsp) over IDE Geral (with --enable_lsp)
+            $procs = $rawProcs | Sort-Object @{Expression={
+                if ($_.CommandLine -and -not $_.CommandLine.Contains("--enable_lsp")) { 0 } else { 1 }
+            }}, @{Expression={[long]$_.ProcessId}; Descending=$true}
+
+            $netstat = netstat -ano 2>$null
+
+            foreach ($p in $procs) {
+                $cl = $p.CommandLine
+                $pidVal = $p.ProcessId
+                if (-not $cl) { continue }
+
+                $m = [regex]::Match($cl, '--csrf_token[=\s]+([\w-]+)')
+                if (-not $m.Success) { continue }
+                $csrf = $m.Groups[1].Value
+
+                $listeningPorts = @()
+
+                # 1. Native Get-NetTCPConnection (fastest & most accurate)
+                try {
+                    $tcpPorts = Get-NetTCPConnection -OwningProcess $pidVal -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty LocalPort
+                    if ($tcpPorts) {
+                        foreach ($tp in $tcpPorts) {
+                            if ($tp -notin $listeningPorts) { $listeningPorts += [int]$tp }
+                        }
+                    }
+                } catch {}
+
+                # 2. Command-line argument ports
+                if ($cl -match '--https_server_port\s+(\d+)') {
+                    $p1 = [int]$Matches[1]
+                    if ($p1 -notin $listeningPorts) { $listeningPorts += $p1 }
+                }
+                if ($cl -match '--extension_server_port\s+(\d+)') {
+                    $p2 = [int]$Matches[1]
+                    if ($p2 -notin $listeningPorts) { $listeningPorts += $p2 }
+                }
+
+                # 3. netstat -ano fallback matching any binding IP format
+                if ($netstat) {
+                    foreach ($line in ($netstat -split "\r?\n")) {
+                        if ($line -match "TCP\s+\S+:(\d+)\s+\S+\s+LISTENING\s+$pidVal\s*$") {
+                            $portFound = [int]$Matches[1]
+                            if ($portFound -notin $listeningPorts) {
+                                $listeningPorts += $portFound
+                            }
+                        }
+                    }
+                }
+
+                foreach ($port in $listeningPorts) {
+                    foreach ($proto in @("https", "http")) {
+                        try {
+                            $url = "$proto://127.0.0.1:$port/exa.language_server_pb.LanguageServerService/GetUserStatus"
+                            [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+                            [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12 -bor [System.Net.SecurityProtocolType]::Tls11 -bor [System.Net.SecurityProtocolType]::Tls
+                            $req = [System.Net.HttpWebRequest]::Create($url)
+                            $req.Method = "POST"
+                            $req.Headers.Add("x-codeium-csrf-token", $csrf)
+                            $req.ContentType = "application/json"
+                            $req.Timeout = 2000
+                            $bodyBytes = [System.Text.Encoding]::UTF8.GetBytes("{}")
+                            $req.ContentLength = $bodyBytes.Length
+                            $st = $req.GetRequestStream()
+                            $st.Write($bodyBytes, 0, $bodyBytes.Length)
+                            $st.Close()
+
+                            $resp = $req.GetResponse()
+                            $reader = New-Object System.IO.StreamReader($resp.GetResponseStream())
+                            $jsonStr = $reader.ReadToEnd()
+                            $reader.Close()
+                            $resp.Close()
+
+                            $parsed = $jsonStr | ConvertFrom-Json
+                            $us = if ($parsed.userStatus) { $parsed.userStatus } else { $parsed }
+                            $email = $null
+                            if ($us.email) { $email = [string]$us.email }
+                            elseif ($us.user -and $us.user.email) { $email = [string]$us.user.email }
+                            elseif ($us.userInfo -and $us.userInfo.email) { $email = [string]$us.userInfo.email }
+                            elseif ($us.userAccount -and $us.userAccount.email) { $email = [string]$us.userAccount.email }
+                            elseif ($us.profile -and $us.profile.email) { $email = [string]$us.profile.email }
+                            elseif ($us.primaryEmail) { $email = [string]$us.primaryEmail }
+
+                            if ($email -or ($us -and ($us.cascadeModelConfigData -or $us.clientModelConfigs -or $us.availableModels))) {
+                                return @{
+                                    userStatus = $us
+                                    port = $port
+                                    pid = $pidVal
+                                    email = $email
+                                    name = if ($us.name) { [string]$us.name } elseif ($us.user -and $us.user.name) { [string]$us.user.name } else { "" }
+                                }
+                            }
+                        } catch {}
                     }
                 }
             }
+        }
 
-            foreach ($port in $listeningPorts) {
+        # 4. Storage Fallback: state.vscdb
+        $vscdbCandidates = @(
+            "$env:APPDATA\Antigravity IDE\User\globalStorage\state.vscdb",
+            "$env:APPDATA\Antigravity\User\globalStorage\state.vscdb"
+        )
+        foreach ($vscdb in $vscdbCandidates) {
+            if (Test-Path $vscdb) {
                 try {
-                    $url = "https://127.0.0.1:$port/exa.language_server_pb.LanguageServerService/GetUserStatus"
-                    [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
-                    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
-                    $req = [System.Net.HttpWebRequest]::Create($url)
-                    $req.Method = "POST"
-                    $req.Headers.Add("x-codeium-csrf-token", $csrf)
-                    $req.ContentType = "application/json"
-                    $req.Timeout = 2500
-                    $bodyBytes = [System.Text.Encoding]::UTF8.GetBytes("{}")
-                    $req.ContentLength = $bodyBytes.Length
-                    $st = $req.GetRequestStream()
-                    $st.Write($bodyBytes, 0, $bodyBytes.Length)
-                    $st.Close()
-
-                    $resp = $req.GetResponse()
-                    $reader = New-Object System.IO.StreamReader($resp.GetResponseStream())
-                    $jsonStr = $reader.ReadToEnd()
+                    $fs = [System.IO.File]::Open($vscdb, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+                    $reader = New-Object System.IO.StreamReader($fs)
+                    $raw = $reader.ReadToEnd()
                     $reader.Close()
-                    $resp.Close()
+                    $fs.Close()
 
-                    $parsed = $jsonStr | ConvertFrom-Json
-                    $us = if ($parsed.userStatus) { $parsed.userStatus } else { $parsed }
-                    $email = $null
-                    if ($us.email) { $email = [string]$us.email }
-                    elseif ($us.user -and $us.user.email) { $email = [string]$us.user.email }
-                    elseif ($us.userInfo -and $us.userInfo.email) { $email = [string]$us.userInfo.email }
-                    elseif ($us.userAccount -and $us.userAccount.email) { $email = [string]$us.userAccount.email }
-                    elseif ($us.profile -and $us.profile.email) { $email = [string]$us.profile.email }
-                    elseif ($us.primaryEmail) { $email = [string]$us.primaryEmail }
-
-                    if ($email -or ($us -and ($us.cascadeModelConfigData -or $us.clientModelConfigs -or $us.availableModels))) {
-                        return @{
-                            userStatus = $us
-                            port = $port
-                            pid = $pidVal
-                            email = $email
-                            name = if ($us.name) { [string]$us.name } elseif ($us.user -and $us.user.name) { [string]$us.user.name } else { "" }
+                    $matches = [regex]::Matches($raw, '([\w\.-]+@(tilab\.com\.br|gmail\.com|google\.com|[\w\.-]+\.\w+))')
+                    if ($matches.Count -gt 0) {
+                        $emailFound = $matches[$matches.Count - 1].Groups[1].Value
+                        if ($emailFound) {
+                            return @{
+                                userStatus = @{ email = $emailFound; name = $emailFound.Split('@')[0] }
+                                port = 0
+                                pid = 0
+                                email = $emailFound
+                                name = $emailFound.Split('@')[0]
+                            }
                         }
                     }
                 } catch {}
