@@ -1195,8 +1195,15 @@ function fetchCloudSync() {
                 
                 // Strict per-machine isolation: ONLY match this device's own machine
                 const savedMyMachine = safeGetStorage('antigravity_my_machine_id');
-                const localMachineId = (state.currentMachine && state.currentMachine.machine_id) || savedMyMachine;
-                const selMachine = localMachineId ? state.machines.find(m => m.machine_id === localMachineId) : null;
+                let localMachineId = (state.currentMachine && state.currentMachine.machine_id) || savedMyMachine;
+                
+                // Auto-bind to available cloud machine on load if not set
+                if (!localMachineId && state.machines && state.machines.length > 0) {
+                    localMachineId = state.machines[0].machine_id;
+                    safeSetStorage('antigravity_my_machine_id', localMachineId);
+                }
+
+                const selMachine = localMachineId ? state.machines.find(m => m.machine_id === localMachineId) : (state.machines ? state.machines[0] : null);
 
                 if (selMachine) {
                     const cloudActiveEmail = selMachine.active_email;
