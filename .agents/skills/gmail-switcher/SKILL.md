@@ -3,17 +3,13 @@ name: gmail-switcher
 description: Use this skill when the user asks to switch Google accounts, sign in with a specific Google account, authenticate in Antigravity IDE, or when you need to know which account is currently active, check quota usage, or detect when a model has been exhausted.
 ---
 
-## Distribuição para Máquinas Novas (Usuário Leigo)
+## Distribuição e Execução em Novas Máquinas (Abordagem 1 - Zero Configuração)
 
-O usuário final é leigo e **não tem acesso ao GitHub**. O fluxo correto é:
+A skill é distribuída nativamente através do próprio repositório na pasta `.agents/skills/gmail-switcher/`.
 
-1. O administrador envia apenas a URL da Vercel ao usuário: `https://antigravity-gmail-switcher.vercel.app`
-2. O usuário abre a página no navegador e clica no botão de download do `.bat` já presente na UI
-3. O usuário executa o `.bat` baixado — ele cuida de tudo automaticamente
-4. **Auto-update**: a cada execução, o `.bat` verifica se há uma versão mais nova no GitHub. Se houver, ele se substitui e relança automaticamente. O usuário nunca precisa baixar manualmente uma versão nova.
-4. **Auto-update**: a cada execução, o `.bat` verifica se há uma versão mais nova no GitHub. Se houver, ele se subsitui e relança automaticamente. O usuário nunca precisa baixar manualmente uma versão nova.
-
-> **Nunca enviar o link do GitHub diretamente ao usuário.** O ponto de entrada único é a URL da Vercel.
+1. Quando o projeto é aberto no Antigravity IDE em qualquer computador (EBBIM, LAPTOP ou nova máquina de equipe), o Antigravity IDE descobre e ativa a skill automaticamente.
+2. O usuário interage pelo chat natural com o Agente (ex: "verificar conta ativa", "trocar conta do Google").
+3. O Agente executa a checagem usando o script nativo da skill em PowerShell sem necessidade de instalação manual de pacotes, .bat ou daemons.
 
 ## Regras Fundamentais do Agente (Cânone Inegociável)
 
@@ -21,24 +17,25 @@ O usuário final é leigo e **não tem acesso ao GitHub**. O fluxo correto é:
 2. **Sem frases triunfistas ou exclamações prematuras**: Não usar frases com exclamações afirmando que as coisas vão funcionar quando você não fez os testes de verdade.
 3. **Não declare sucesso sem verificação concreta**: Em vez de inventar uma realidade que você não pode checar ou prometer que algo funcionou sem poder verificar remotamente, diga exatamente: "Verifique se o que eu tentei fazer funcionou". É proibido mentir ou supor resultados.
 4. **PROIBIDO DEPENDER OU PROCURAR PYTHON**: O aplicativo e seus scripts (.bat / PowerShell) DEVEM ser 100% nativos do Windows (PowerShell 5.1+). É estritamente proibido procurar Python, baixar Python ou esperar que Python esteja instalado na máquina do usuário.
-5. **PROIBIDO DESFAZER OU ALTERAR ORDENS DO USUÁRIO SEM PERMISSÃO**: Nunca alterar textos, rótulos, botões, design, regras de ordenação ou qualquer instrução dada pelo usuário (por exemplo, alterar o texto "Consumo" para qualquer outro termo) sem perguntar primeiro e obter autorização prévia e expressa do usuário.
+5. **PROIBIDO DESFAZER OU ALTERAR ORDENS DO USUÁRIO SEM PERMISSÃO**: Nunca alterar textos, rótulos, botões, design, regras de ordenação ou qualquer instrução dada pelo usuário sem perguntar primeiro e obter autorização prévia e expressa do usuário.
 6. **PROIBIDO INVENTAR COTAS OU VALORES DE CONSUMO DE TOKEN**: Se o sistema não conseguir medir ou obter a informação de consumo de token dos modelos para uma conta, é ESTRITAMENTE PROIBIDO assumir 100%, 0% ou qualquer outro valor suposto. Nesses casos de falta de medição, a interface DEVE obrigatoriamente exibir o texto "Sem informação".
 7. **VERIFICAÇÃO PELO USUÁRIO QUANDO NÃO FOR POSSÍVEL CHECAR**: Em vez de inventar uma realidade que não pode checar, escreva: "Verifique se o que eu tentei fazer funcionou". É estritamente proibido mentir ou inventar informação.
 8. **PROIBIDO USAR SERVIÇOS DE TERCEIROS SEM CONSULTAR O USUÁRIO**: É ESTRITAMENTE PROIBIDO utilizar, integrar, cadastrar, enviar dados ou fazer chamadas para qualquer API ou serviço de terceiros (como bancos de dados externos, webhooks ou APIs públicas) sem perguntar primeiro e receber autorização prévia e expressa do usuário.
-9. **IDENTIFICAÇÃO DETERMINÍSTICA DA CONTA DO AGENTE (CONFIRMADO)**: A conta ativa do AGENTE é identificada exclusivamente pelo processo `language_server_windows_x64.exe` que **NÃO** possui a flag `--enable_lsp` em sua linha de comando (`HasLsp = false`). O processo **COM** `--enable_lsp` pertence ao LSP de código (autocompletar) e JAMAIS deve ser reportado como conta do Agente. Esta regra foi verificada empiricamente em EBBIM (PID 36576 = `aluno24@tilab.com.br`, sem `--enable_lsp`). O `server.ps1` implementa isso via `Sort-Object` priorizando `not .Contains("--enable_lsp")`. Esta mesma lógica aplica-se a QUALQUER máquina (inclusive LAPTOP). Para diagnosticar em qualquer máquina: `Get-CimInstance Win32_Process | Where-Object {$_.Name -like 'language_server*'} | Select-Object ProcessId, @{N='HasLsp';E={$_.CommandLine -match '--enable_lsp'}}, @{N='CL';E={$_.CommandLine}}`. O processo com `HasLsp=False` é SEMPRE o agente.
-10. **PROIBIDO USAR ADJETIVOS OU SUPERLATIVOS**: É ESTRITAMENTE PROIBIDO utilizar adjetivos e superlativos ("absoluto", "perfeito", "incrível", "definitivo", "total", etc.) nas respostas, explicações ou documentação. O agente DEVE ser direto, objetivo, factual e focado exclusivamente na resolução mecânica dos problemas.
+9. **IDENTIFICAÇÃO DETERMINÍSTICA DA CONTA DO AGENTE (CONFIRMADO)**: A conta ativa do AGENTE é identificada exclusivamente pelo processo `language_server_windows_x64.exe` que **NÃO** possui a flag `--enable_lsp` em sua linha de comando (`HasLsp = false`). O processo **COM** `--enable_lsp` pertence ao LSP de código (autocompletar) e JAMAIS deve ser reportado como conta do Agente.
+10. **PROIBIDO USAR ADJETIVOS OU SUPERLATIVOS**: É ESTRITAMENTE PROIBIDO utilizar adjetivos e superlativos nas respostas, explicações ou documentação. O agente DEVE ser direto, objetivo, factual e focado exclusivamente na resolução mecânica dos problemas.
 11. **REGRA DA BARRA DE MEDIÇÃO DE TOKENS: EXPOR O QUANTO RESTA / DISPONÍVEL (NUNCA CONSUMO)**: A barra de medição e a coluna correspondente nos cards DEVEM SEMPRE exibir a porcentagem de tokens que RESTA / ESTÁ DISPONÍVEL (0% a 100% restante). É PROIBIDO inverter ou exibir como 'Consumo'. 100% (verde cheia) = cota cheia disponível; 0% (vermelho vazia) = esgotado / sem tokens restantes. O título da coluna deve ser 'Disponível'.
 12. **ISOLAMENTO TOTAL POR COMPUTADOR**: A interface DEVE exibir EXCLUSIVAMENTE as informações do PRÓPRIO computador onde o navegador/IDE está aberto. É ESTRITAMENTE PROIBIDO exibir dados, contas ativas, nomes de máquinas ou cotas de outro computador.
 13. **PROIBIDO EXIGIR OU SUGERIR INSTALAÇÃO DE ARQUIVOS .BAT OU SERVIÇOS EM SEGUNDO PLANO**: É expressamente proibido sugerir ou criar rotinas de instalação de arquivos `.bat` ou criação de serviços/daemons manuais no sistema operacional. A sincronização e operação devem ser 100% nativas via comandos PowerShell existentes na Skill ou pela própria sessão do Antigravity.
+14. **PROIBIDO EXIBIR SELETOR MANUAL DE MÁQUINA NA INTERFACE**: A identificação da máquina ocorre automaticamente por sessão.
 
+## Execução da Skill pelo Agente
 
-## MANDATORY: Run `check` at the start of EVERY session
-
-At the beginning of each conversation (or whenever you are unsure which account is active), run:
+Ao iniciar uma sessão ou quando solicitado pelo usuário para verificar ou alternar contas, execute:
 
 ```powershell
-powershell -File "C:\Users\JoaoGaspar\.gemini\config\skills\gmail-switcher\scripts\gmail-switcher.ps1" check
+powershell -ExecutionPolicy Bypass -File "$PSScriptRoot\scripts\gmail-switcher.ps1" check
 ```
+*(ou localmente pelo caminho relativo da pasta `.agents/skills/gmail-switcher/scripts/gmail-switcher.ps1`)*
 
 This will:
 - Detect the active agent account and IDE Geral account in real time
