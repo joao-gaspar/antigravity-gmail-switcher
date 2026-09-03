@@ -4,7 +4,6 @@
 
 let state = {
     accounts: [],
-    currentFilter: 'all',
     searchQuery: '',
     activeNoteAccountId: null,
     selectedPresetTheme: 'gradient-blue',
@@ -42,7 +41,6 @@ const elements = {
     accountIdInput: document.getElementById('account-id'),
     accountNameInput: document.getElementById('account-name'),
     accountEmailInput: document.getElementById('account-email'),
-    accountCategorySelect: document.getElementById('account-category'),
     accountAvatarUrlInput: document.getElementById('account-avatar-url'),
     colorPresets: document.getElementById('color-presets'),
     btnAddAccount: document.getElementById('btn-add-account'),
@@ -639,12 +637,8 @@ function setupEventListeners() {
     }
 }
 
-function getChooserUrl(email, service) {
-    let continueUrl = 'https://mail.google.com/mail/';
-    if (service === 'calendar') continueUrl = 'https://calendar.google.com/calendar/';
-    else if (service === 'drive') continueUrl = 'https://drive.google.com/';
-    else if (service === 'meet') continueUrl = 'https://meet.google.com/';
-    return `https://accounts.google.com/AccountChooser?Email=${encodeURIComponent(email)}&continue=${encodeURIComponent(continueUrl)}`;
+function getChooserUrl(email) {
+    return `https://accounts.google.com/AccountChooser?Email=${encodeURIComponent(email)}`;
 }
 
 function getActiveEmailForMachine(machineId) {
@@ -1465,7 +1459,6 @@ function handleFormSubmit(e) {
     const id = elements.accountIdInput.value;
     const name = elements.accountNameInput.value.trim();
     const email = elements.accountEmailInput.value.trim();
-    const category = elements.accountCategorySelect.value;
     const avatarUrl = elements.accountAvatarUrlInput.value.trim();
 
     if (id) {
@@ -1473,7 +1466,6 @@ function handleFormSubmit(e) {
         if (accIdx !== -1) {
             state.accounts[accIdx].name = name;
             state.accounts[accIdx].email = email;
-            state.accounts[accIdx].category = category;
             state.accounts[accIdx].avatarUrl = avatarUrl;
             state.accounts[accIdx].theme = state.selectedPresetTheme;
         }
@@ -1481,10 +1473,10 @@ function handleFormSubmit(e) {
     } else {
         state.accounts.push({
             id: 'acc-' + Date.now(),
-            name, email, category, avatarUrl,
+            name, email, avatarUrl,
             theme: state.selectedPresetTheme,
             notes: '', status: 'available',
-            tokenGemini: 0, tokenClaude: 0, tokenGpt: 0
+            tokenGemini: null, tokenClaude: null, tokenGpt: null
         });
         showToast('Nova conta adicionada!');
     }
