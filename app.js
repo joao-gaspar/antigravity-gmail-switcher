@@ -406,18 +406,17 @@ function getChooserUrl(email, service) {
 function getActiveEmailForMachine(machineId) {
     if (typeof state === 'undefined' || !state) return null;
     const targetId = machineId || state.selectedMachineId;
-    if (state.machines && Array.isArray(state.machines)) {
-        const selMachineObj = state.machines.find(m => m && m.machine_id === targetId);
-        if (selMachineObj && selMachineObj.active_email) {
-            return selMachineObj.active_email;
+    if (targetId) {
+        if (state.machines && Array.isArray(state.machines)) {
+            const selMachineObj = state.machines.find(m => m && m.machine_id === targetId);
+            if (selMachineObj && selMachineObj.active_email) {
+                return selMachineObj.active_email;
+            }
         }
+        return null;
     }
     if (state.currentMachine && state.currentMachine.active_email) {
         return state.currentMachine.active_email;
-    }
-    if (state.accounts && Array.isArray(state.accounts)) {
-        const acc = state.accounts.find(a => a && a.id === state.activeAccountId);
-        if (acc && acc.email) return acc.email;
     }
     return null;
 }
@@ -628,13 +627,13 @@ function renderAccounts() {
                                      (state.currentMachine && state.currentMachine.model_quotas) || 
                                      state.liveModelQuotas;
                 if (quotasSource && typeof quotasSource === 'object') {
-                    let geminiMax = null, claudeMin = null, gptMin = null;
+                    let geminiMin = null, claudeMin = null, gptMin = null;
                     let hasG = false, hasC = false, hasP = false;
                     for (const [lbl, info] of Object.entries(quotasSource)) {
                         const rem = typeof info === 'object' ? info.remaining : (typeof info === 'number' ? info : null);
                         if (rem !== null && rem !== undefined) {
                             if (/gemini/i.test(lbl)) {
-                                geminiMax = hasG ? Math.max(geminiMax, rem) : rem;
+                                geminiMin = hasG ? Math.min(geminiMin, rem) : rem;
                                 hasG = true;
                             } else if (/claude/i.test(lbl)) {
                                 claudeMin = hasC ? Math.min(claudeMin, rem) : rem;
@@ -645,7 +644,7 @@ function renderAccounts() {
                             }
                         }
                     }
-                    qG = getFrac(geminiMax);
+                    qG = getFrac(geminiMin);
                     qC = getFrac(claudeMin);
                     qP = getFrac(gptMin);
                 }
@@ -968,7 +967,7 @@ function fetchCloudSync() {
                     const cloudActiveEmail = selMachine.active_email;
                     const cloudModelQuotas = selMachine.model_quotas || {};
 
-                    let geminiMax = null, claudeMin = null, gptMin = null;
+                    let geminiMin = null, claudeMin = null, gptMin = null;
                     let hasGemini = false, hasClaude = false, hasGpt = false;
 
                     if (cloudModelQuotas && typeof cloudModelQuotas === 'object' && Object.keys(cloudModelQuotas).length > 0) {
@@ -976,7 +975,7 @@ function fetchCloudSync() {
                             const rem = typeof info === 'object' ? info.remaining : (typeof info === 'number' ? info : null);
                             if (rem !== null && rem !== undefined) {
                                 if (/gemini/i.test(lbl)) {
-                                    geminiMax = hasGemini ? Math.max(geminiMax, rem) : rem;
+                                    geminiMin = hasGemini ? Math.min(geminiMin, rem) : rem;
                                     hasGemini = true;
                                 } else if (/claude/i.test(lbl)) {
                                     claudeMin = hasClaude ? Math.min(claudeMin, rem) : rem;
@@ -990,7 +989,7 @@ function fetchCloudSync() {
                     }
 
                     state.liveQuota = {
-                        gemini: hasGemini ? geminiMax : null,
+                        gemini: hasGemini ? geminiMin : null,
                         claude: hasClaude ? claudeMin : null,
                         gpt:    hasGpt    ? gptMin    : null
                     };
