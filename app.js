@@ -67,9 +67,11 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = window.location.pathname;
         return;
     }
-    // Read machine identity from URL ?machine= param (set by gmail-switcher.ps1 check)
-    const machineFromUrl = urlParams.get('machine');
+    // Read machine identity from URL ?machine= param (set by gmail-switcher.ps1 check or manual URL)
+    let machineFromUrl = urlParams.get('machine');
     if (machineFromUrl) {
+        machineFromUrl = machineFromUrl.toLowerCase().trim();
+        if (!machineFromUrl.startsWith('mac-')) machineFromUrl = 'mac-' + machineFromUrl;
         safeSetStorage('antigravity_my_machine_id', machineFromUrl);
         state.selectedMachineId = machineFromUrl;
         // Clean URL without reloading
