@@ -45,10 +45,14 @@ class handler(BaseHTTPRequestHandler):
                     m_store[smid] = seed_m
 
             mid = data.get('machine_id')
+            hostname = data.get('hostname')
             if mid:
+                if not hostname:
+                    self._send_json(400, {"error": "hostname is required and cannot be empty"})
+                    return
                 m_store[mid] = {
                     "machine_id":     mid,
-                    "hostname":       data.get("hostname", "PC"),
+                    "hostname":       hostname,
                     "username":       data.get("username", ""),
                     "ip":             data.get("ip", ""),
                     "os":             data.get("os", ""),
