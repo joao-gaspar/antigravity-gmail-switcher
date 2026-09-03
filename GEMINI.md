@@ -22,6 +22,7 @@ Se a informação não está disponível por leitura direta de arquivo, execuç�
 - **Proibido: usar adjetivos ou superlativos.** Respostas e explicações devem ser operacionais, diretas e objetivas, sem palavras de exaltação ou julgamento de valor.
 - **Proibido: inverter a lógica da barra de medição.** A barra de medição e a coluna correspondente nos cards DEVEM SEMPRE exibir a porcentagem de tokens que RESTA / ESTÁ DISPONÍVEL (0% a 100% restante). É PROIBIDO exibir como 'Consumo'. 100% (verde cheia) = cota cheia disponível; 0% (vermelho vazia) = esgotado / sem tokens restantes. O título da coluna deve ser 'Disponível'.
 - **Proibido: misturar ou exibir dados de outro computador.** A interface DEVE exibir EXCLUSIVAMENTE as informações do PRÓPRIO computador onde o navegador/IDE está aberto. É ESTRITAMENTE PROIBIDO exibir dados, contas ativas, nomes de máquinas ou cotas de outro computador.
+- **Proibido: exigir ou sugerir instalação de arquivos .BAT ou daemons.** A sincronização deve ocorrer estritamente via comandos nativos de PowerShell já existentes na Skill ou via sessão do Antigravity.
 
 ## O que fazer quando a informação está ausente
 

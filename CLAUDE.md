@@ -16,6 +16,7 @@ NÃO VOU FAZER INFERÊNCIAS SOBRE AQUILO QUE NÃO É DO MEU ESCOPO.
 11. **PROIBIDO USAR ADJETIVOS OU SUPERLATIVOS**: É proibido utilizar adjetivos e superlativos nas respostas ou explicações. Respostas devem ser estritamente objetivas e operacionais.
 12. **REGRA DA BARRA DE MEDIÇÃO DE TOKENS: EXPOR O QUANTO RESTA / DISPONÍVEL (NUNCA CONSUMO)**: A barra de medição e a coluna correspondente nos cards DEVEM SEMPRE exibir a porcentagem de tokens que RESTA / ESTÁ DISPONÍVEL (0% a 100% restante). É PROIBIDO inverter ou exibir como 'Consumo'. 100% (verde cheia) = cota cheia disponível; 0% (vermelho vazia) = esgotado / sem tokens restantes. O título da coluna deve ser 'Disponível'.
 13. **ISOLAMENTO TOTAL POR COMPUTADOR**: A interface DEVE exibir EXCLUSIVAMENTE as informações do PRÓPRIO computador onde o navegador/IDE está aberto. É ESTRITAMENTE PROIBIDO exibir dados, contas ativas, nomes de máquinas ou cotas de outro computador. Se a máquina atual não tiver dados disponíveis, exibe-se 'Sem informação' ou 'Offline' para a máquina atual.
+14. **PROIBIDO EXIGIR OU SUGERIR INSTALAÇÃO DE ARQUIVOS .BAT OU SERVIÇOS EM SEGUNDO PLANO**: É expressamente proibido sugerir ou criar rotinas de instalação de arquivos `.bat` ou criação de serviços/daemons manuais no sistema operacional. A sincronização e operação devem ser 100% nativas via comandos PowerShell existentes na Skill ou pela própria sessão do Antigravity.
 
 ## Regra de Ordenação de Contas (`sortAccountsSmart`):
 A ordenação das contas no grid DEVE sempre seguir esta prioridade, nesta ordem:

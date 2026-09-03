@@ -1330,20 +1330,27 @@ function updateLiveBanner(agentEmail, suggestEmail, lastCheck, isOffline = false
     const localHost = (activeCloudMachine && activeCloudMachine.hostname) || (state.currentMachine && state.currentMachine.hostname) || (savedMyMachine ? savedMyMachine.replace('mac-', '').toUpperCase() : 'Este Computador');
     const localUser = (activeCloudMachine && activeCloudMachine.username) ? ` (${activeCloudMachine.username})` : ((state.currentMachine && state.currentMachine.username) ? ` (${state.currentMachine.username})` : '');
 
-    let machineBadgeHtml = `
-        <div style="display:flex; align-items:center; gap:6px; font-size:0.68rem; font-weight:700; color:#e2e8f0;">
-            <i class="fa-solid fa-laptop" style="color:#60a5fa;"></i> <span>${localHost}${localUser}</span>
-        </div>
-    `;
+    let machineBadgeHtml = '';
+    const currentBoundId = (activeCloudMachine && activeCloudMachine.machine_id) || (state.currentMachine && state.currentMachine.machine_id) || savedMyMachine;
 
-    // If device is not yet identified and there are multiple cloud machines, show a one-click bind
-    if (!savedMyMachine && !state.currentMachine && state.machines && state.machines.length > 0) {
-        const btns = state.machines.map(m => 
-            `<button onclick="selectThisDeviceMachine('${m.machine_id}')" style="background:rgba(96,165,250,0.15); border:1px solid rgba(96,165,250,0.4); color:#93c5fd; font-size:0.56rem; padding:1px 6px; border-radius:4px; font-weight:700; cursor:pointer;">💻 Sou o ${m.hostname}</button>`
-        ).join(' ');
+    if (state.machines && state.machines.length > 1) {
+        const btns = state.machines.map(m => {
+            const isSel = m.machine_id === currentBoundId;
+            const bg = isSel ? 'linear-gradient(135deg, rgba(96,165,250,0.35) 0%, rgba(168,85,247,0.35) 100%)' : 'rgba(255,255,255,0.06)';
+            const border = isSel ? '1px solid #60a5fa' : '1px solid rgba(255,255,255,0.12)';
+            const color = isSel ? '#ffffff' : '#9ca3af';
+            return `<button onclick="selectThisDeviceMachine('${m.machine_id}')" style="background:${bg}; border:${border}; color:${color}; font-size:0.62rem; padding:2px 8px; border-radius:6px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">💻 ${m.hostname}</button>`;
+        }).join(' ');
         machineBadgeHtml = `
-            <div style="display:flex; align-items:center; gap:6px; font-size:0.62rem; color:#9ca3af;">
-                <span>Dispositivo:</span> ${btns}
+            <div style="display:flex; align-items:center; gap:6px;">
+                <span style="font-size:0.56rem; color:#6b7280; font-weight:700;">MÁQUINA:</span>
+                ${btns}
+            </div>
+        `;
+    } else {
+        machineBadgeHtml = `
+            <div style="display:flex; align-items:center; gap:6px; font-size:0.68rem; font-weight:700; color:#e2e8f0;">
+                <i class="fa-solid fa-laptop" style="color:#60a5fa;"></i> <span>${localHost}${localUser}</span>
             </div>
         `;
     }
