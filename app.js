@@ -1070,16 +1070,22 @@ function fetchSingleEndpoint(url) {
 
 function fetchLive() {
     const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const isHttps = window.location.protocol === 'https:';
 
-    if (isHttps) {
-        fetchCloudSync();
-        return;
-    }
-
-    fetchSingleEndpoint(isLocalHost ? '/api/live' : 'http://127.0.0.1:8000/api/live')
-        .then(data => processLiveData(data))
-        .catch(() => fetchCloudSync());
+    fetchSingleEndpoint('http://127.0.0.1:8000/api/live')
+        .then(data => {
+            if (data && data.machine) {
+                state.currentMachine = data.machine;
+                if (!state.selectedMachineId) {
+                    state.selectedMachineId = data.machine.machine_id;
+                    safeSetStorage('antigravity_selected_machine_id', data.machine.machine_id);
+                }
+            }
+            processLiveData(data);
+            fetchCloudSync();
+        })
+        .catch(() => {
+            fetchCloudSync();
+        });
 }
 
 function processLiveData(data) {
@@ -1189,7 +1195,7 @@ function fetchCloudSync() {
                 
                 const selMachine = state.selectedMachineId 
                     ? state.machines.find(m => m.machine_id === state.selectedMachineId) 
-                    : (state.machines.find(m => m.machine_id === (state.currentMachine && state.currentMachine.machine_id)) || state.machines[0]);
+                    : (state.currentMachine ? state.machines.find(m => m.machine_id === state.currentMachine.machine_id) : null);
 
                 if (selMachine) {
                     const cloudActiveEmail = selMachine.active_email;
@@ -1279,7 +1285,7 @@ function fetchCloudSync() {
             renderAccounts();
             const activeCloudMachine = state.selectedMachineId 
                 ? state.machines.find(m => m.machine_id === state.selectedMachineId)
-                : (state.machines.find(m => m.machine_id === (state.currentMachine && state.currentMachine.machine_id)) || state.machines[0]);
+                : (state.currentMachine ? state.machines.find(m => m.machine_id === state.currentMachine.machine_id) : null);
             updateLiveBanner(
                 activeCloudMachine ? activeCloudMachine.active_email : null,
                 activeCloudMachine ? activeCloudMachine.suggest_email : null,
