@@ -482,6 +482,20 @@ switch ($Command.ToLower()) {
         Write-Host " $($a.Name)  <$($a.Email)>  PID $($a.PID) :$($a.Port)" -ForegroundColor White
     }
     Write-Host ""; Invoke-Check -Silent $false | Out-Null
+    # Auto-start server.ps1 if not already running on port 8000
+    $serverRunning = $false
+    try {
+        $conn = Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue
+        if ($conn) { $serverRunning = $true }
+    } catch {}
+    if (-not $serverRunning) {
+        $serverScript = Join-Path $ScriptDir "server.ps1"
+        if (Test-Path $serverScript) {
+            Start-Process powershell -ArgumentList "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$serverScript`"" -WindowStyle Hidden
+            Start-Sleep -Milliseconds 500
+        }
+    }
+
     $dashUrl = "http://localhost:8000"
     Write-Host "  Abrindo dashboard local: $dashUrl" -ForegroundColor DarkGray
     Start-Process $dashUrl

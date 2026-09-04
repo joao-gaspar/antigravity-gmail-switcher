@@ -223,6 +223,23 @@ while ($listener.IsListening) {
                 $buffer = [System.IO.File]::ReadAllBytes("$baseDir\accounts.json")
                 $response.ContentType = "application/json; charset=utf-8"
             }
+        } elseif ($path -eq "/api/self-update" -or $path -eq "/api/update") {
+            $destDir = if ($baseDir) { $baseDir } else { "$env:USERPROFILE\.gemini\config\skills\gmail-switcher" }
+            $baseUrl = "https://raw.githubusercontent.com/joao-gaspar/antigravity-gmail-switcher/main"
+            try {
+                if (-not (Test-Path "$destDir\scripts")) { New-Item -ItemType Directory -Force -Path "$destDir\scripts" | Out-Null }
+                Invoke-WebRequest -Uri "$baseUrl/server.ps1" -OutFile "$destDir\scripts\server.ps1" -UseBasicParsing
+                Invoke-WebRequest -Uri "$baseUrl/gmail-switcher.ps1" -OutFile "$destDir\scripts\gmail-switcher.ps1" -UseBasicParsing
+                Invoke-WebRequest -Uri "$baseUrl/index.html" -OutFile "$destDir\index.html" -UseBasicParsing
+                Invoke-WebRequest -Uri "$baseUrl/app.js" -OutFile "$destDir\app.js" -UseBasicParsing
+                Invoke-WebRequest -Uri "$baseUrl/styles.css" -OutFile "$destDir\styles.css" -UseBasicParsing
+                $resMap = @{ status = "ok"; message = "Arquivos atualizados com sucesso do GitHub!"; updated = $true }
+            } catch {
+                $resMap = @{ status = "error"; message = $_.Exception.Message; updated = $false }
+            }
+            $json = $resMap | ConvertTo-Json
+            $buffer = [System.Text.Encoding]::UTF8.GetBytes($json)
+            $response.ContentType = "application/json; charset=utf-8"
         } elseif ($path -eq "/api/status" -or $path -eq "/api/live") {
             $statusObj = Get-LanguageServerStatus
 
