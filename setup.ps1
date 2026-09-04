@@ -38,11 +38,15 @@ $hooksJson = @"
 "@
 $hooksJson | Out-File -FilePath "$env:USERPROFILE\.gemini\config\hooks.json" -Encoding utf8 -Force
 
-# Start local server silently in background if not already listening
-if (-not (Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue)) {
-    Write-Host "  ↳ Iniciando monitoramento em segundo plano..." -ForegroundColor Yellow
-    Start-Process powershell -ArgumentList "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$destDir\scripts\server.ps1`"" -WindowStyle Hidden
-}
+# Always restart server.ps1 to ensure the newest code is running
+Write-Host "  ↳ Reiniciando servidor local com o código atualizado..." -ForegroundColor Yellow
+Get-Process powershell -ErrorAction SilentlyContinue | Where-Object {
+    ($_.CommandLine -like "*server.ps1*") -and $_.Id -ne $PID
+} | Stop-Process -Force -ErrorAction SilentlyContinue
+Start-Sleep -Milliseconds 500
+
+Start-Process powershell -ArgumentList "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$destDir\scripts\server.ps1`"" -WindowStyle Hidden
+
 
 # Perform immediate initial check & telemetry sync to Vercel
 Write-Host "  ↳ Transmitindo conta ativa e cotas do $env:COMPUTERNAME..." -ForegroundColor Green

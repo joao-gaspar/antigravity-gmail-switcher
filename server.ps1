@@ -52,13 +52,14 @@ function Get-LanguageServerStatus {
                 $pidVal = $p.ProcessId
                 if (-not $cl) { continue }
 
-                $m = [regex]::Match($cl, '--csrf_token[=\s]+([\w-]+)')
-                if (-not $m.Success) { continue }
-                $csrf = $m.Groups[1].Value
+                $csrfTokens = @()
+                if ($cl -match '--csrf_token[=\s"]+([^"\s]+)') { $csrfTokens += $Matches[1] }
+                if ($cl -match '--extension_server_csrf_token[=\s"]+([^"\s]+)') { $csrfTokens += $Matches[1] }
+                if ($csrfTokens.Count -eq 0) { continue }
 
                 $listeningPorts = @()
 
-                # 1. Native Get-NetTCPConnection (fastest & most accurate)
+                # 1. Native Get-NetTCPConnection
                 try {
                     $tcpPorts = Get-NetTCPConnection -OwningProcess $pidVal -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty LocalPort
                     if ($tcpPorts) {
@@ -92,47 +93,51 @@ function Get-LanguageServerStatus {
 
                 foreach ($port in $listeningPorts) {
                     foreach ($proto in @("https", "http")) {
-                        try {
-                            $url = "$($proto)://127.0.0.1:$port/exa.language_server_pb.LanguageServerService/GetUserStatus"
-                            [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
-                            [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12 -bor [System.Net.SecurityProtocolType]::Tls11 -bor [System.Net.SecurityProtocolType]::Tls
-                            $req = [System.Net.HttpWebRequest]::Create($url)
-                            $req.Method = "POST"
-                            $req.Headers.Add("x-codeium-csrf-token", $csrf)
-                            $req.ContentType = "application/json"
-                            $req.Timeout = 2000
-                            $bodyBytes = [System.Text.Encoding]::UTF8.GetBytes("{}")
-                            $req.ContentLength = $bodyBytes.Length
-                            $st = $req.GetRequestStream()
-                            $st.Write($bodyBytes, 0, $bodyBytes.Length)
-                            $st.Close()
+                        foreach ($csrf in $csrfTokens) {
+                            foreach ($hdr in @("x-codeium-csrf-token", "x-csrf-token")) {
+                                try {
+                                    $url = "$($proto)://127.0.0.1:$port/exa.language_server_pb.LanguageServerService/GetUserStatus"
+                                    [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+                                    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12 -bor [System.Net.SecurityProtocolType]::Tls11 -bor [System.Net.SecurityProtocolType]::Tls
+                                    $req = [System.Net.HttpWebRequest]::Create($url)
+                                    $req.Method = "POST"
+                                    $req.Headers.Add($hdr, $csrf)
+                                    $req.ContentType = "application/json"
+                                    $req.Timeout = 1500
+                                    $bodyBytes = [System.Text.Encoding]::UTF8.GetBytes("{}")
+                                    $req.ContentLength = $bodyBytes.Length
+                                    $st = $req.GetRequestStream()
+                                    $st.Write($bodyBytes, 0, $bodyBytes.Length)
+                                    $st.Close()
 
-                            $resp = $req.GetResponse()
-                            $reader = New-Object System.IO.StreamReader($resp.GetResponseStream())
-                            $jsonStr = $reader.ReadToEnd()
-                            $reader.Close()
-                            $resp.Close()
+                                    $resp = $req.GetResponse()
+                                    $reader = New-Object System.IO.StreamReader($resp.GetResponseStream())
+                                    $jsonStr = $reader.ReadToEnd()
+                                    $reader.Close()
+                                    $resp.Close()
 
-                            $parsed = $jsonStr | ConvertFrom-Json
-                            $us = if ($parsed.userStatus) { $parsed.userStatus } else { $parsed }
-                            $email = $null
-                            if ($us.email) { $email = [string]$us.email }
-                            elseif ($us.user -and $us.user.email) { $email = [string]$us.user.email }
-                            elseif ($us.userInfo -and $us.userInfo.email) { $email = [string]$us.userInfo.email }
-                            elseif ($us.userAccount -and $us.userAccount.email) { $email = [string]$us.userAccount.email }
-                            elseif ($us.profile -and $us.profile.email) { $email = [string]$us.profile.email }
-                            elseif ($us.primaryEmail) { $email = [string]$us.primaryEmail }
+                                    $parsed = $jsonStr | ConvertFrom-Json
+                                    $us = if ($parsed.userStatus) { $parsed.userStatus } else { $parsed }
+                                    $email = $null
+                                    if ($us.email) { $email = [string]$us.email }
+                                    elseif ($us.user -and $us.user.email) { $email = [string]$us.user.email }
+                                    elseif ($us.userInfo -and $us.userInfo.email) { $email = [string]$us.userInfo.email }
+                                    elseif ($us.userAccount -and $us.userAccount.email) { $email = [string]$us.userAccount.email }
+                                    elseif ($us.profile -and $us.profile.email) { $email = [string]$us.profile.email }
+                                    elseif ($us.primaryEmail) { $email = [string]$us.primaryEmail }
 
-                            if ($email -or ($us -and ($us.cascadeModelConfigData -or $us.clientModelConfigs -or $us.availableModels))) {
-                                return @{
-                                    userStatus = $us
-                                    port = $port
-                                    pid = $pidVal
-                                    email = $email
-                                    name = if ($us.name) { [string]$us.name } elseif ($us.user -and $us.user.name) { [string]$us.user.name } else { "" }
-                                }
+                                    if ($email -or ($us -and ($us.cascadeModelConfigData -or $us.clientModelConfigs -or $us.availableModels))) {
+                                        return @{
+                                            userStatus = $us
+                                            port = $port
+                                            pid = $pidVal
+                                            email = $email
+                                            name = if ($us.name) { [string]$us.name } elseif ($us.user -and $us.user.name) { [string]$us.user.name } else { "" }
+                                        }
+                                    }
+                                } catch {}
                             }
-                        } catch {}
+                        }
                     }
                 }
             }
@@ -199,18 +204,25 @@ while ($listener.IsListening) {
             $agentName = $null
             $modelQuotas = @{}
 
+            if ($statusObj -and $statusObj.email) { $agentEmail = [string]$statusObj.email }
+            if ($statusObj -and $statusObj.name)  { $agentName  = [string]$statusObj.name }
+
             if ($statusObj -and $statusObj.userStatus) {
                 $us = $statusObj.userStatus
-                if ($us.email) { $agentEmail = [string]$us.email }
-                elseif ($us.user -and $us.user.email) { $agentEmail = [string]$us.user.email }
-                elseif ($us.userInfo -and $us.userInfo.email) { $agentEmail = [string]$us.userInfo.email }
-                elseif ($us.userAccount -and $us.userAccount.email) { $agentEmail = [string]$us.userAccount.email }
-                elseif ($us.profile -and $us.profile.email) { $agentEmail = [string]$us.profile.email }
-                elseif ($us.primaryEmail) { $agentEmail = [string]$us.primaryEmail }
+                if (-not $agentEmail) {
+                    if ($us.email) { $agentEmail = [string]$us.email }
+                    elseif ($us.user -and $us.user.email) { $agentEmail = [string]$us.user.email }
+                    elseif ($us.userInfo -and $us.userInfo.email) { $agentEmail = [string]$us.userInfo.email }
+                    elseif ($us.userAccount -and $us.userAccount.email) { $agentEmail = [string]$us.userAccount.email }
+                    elseif ($us.profile -and $us.profile.email) { $agentEmail = [string]$us.profile.email }
+                    elseif ($us.primaryEmail) { $agentEmail = [string]$us.primaryEmail }
+                }
 
-                if ($us.name) { $agentName = [string]$us.name }
-                elseif ($us.user -and $us.user.name) { $agentName = [string]$us.user.name }
-                elseif ($us.userInfo -and $us.userInfo.name) { $agentName = [string]$us.userInfo.name }
+                if (-not $agentName) {
+                    if ($us.name) { $agentName = [string]$us.name }
+                    elseif ($us.user -and $us.user.name) { $agentName = [string]$us.user.name }
+                    elseif ($us.userInfo -and $us.userInfo.name) { $agentName = [string]$us.userInfo.name }
+                }
 
                 $configs = @()
                 if ($us.cascadeModelConfigData -and $us.cascadeModelConfigData.clientModelConfigs) {
