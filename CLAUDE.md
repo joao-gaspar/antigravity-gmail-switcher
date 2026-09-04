@@ -28,6 +28,7 @@ NÃO VOU FAZER INFERÊNCIAS SOBRE AQUILO QUE NÃO É DO MEU ESCOPO.
    - Identifica todas as portas de escuta TCP do PID via `netstat -ano` (regex `LISTENING\s+$PID$`).
    - Executa chamada TLS 1.2 `POST https://127.0.0.1:<PORT>/exa.language_server_pb.LanguageServerService/GetUserStatus` com header `x-codeium-csrf-token: <TOKEN>`.
    - Extrai o e-mail ativo da conta e o mapa de cotas reais (`cascadeModelConfigData.clientModelConfigs`).
+20. **PROIBIDO FICAR EXPLICANDO SUPOSIÇÕES E PRESUNÇÕES**: O agente não foi chamado para ficar explicando hipóteses, teorias ou coisas que não sabe se vão funcionar apenas por suposição ou presunção. O foco deve ser estritamente mecânico, empírico e resolutivo. Quando algo não puder ser verificado diretamente pelo agente na máquina remota, declarar objetivamente o fato sem presunções ou promessas infundadas.
 
 ## Regra de Ordenação de Contas (`sortAccountsSmart`):
 A ordenação das contas no grid DEVE sempre seguir esta prioridade, nesta ordem:

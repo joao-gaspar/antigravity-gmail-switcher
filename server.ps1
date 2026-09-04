@@ -203,24 +203,55 @@ while ($listener.IsListening) {
             }
         }
 
+        $defaultDir = "$env:USERPROFILE\.gemini\config\skills\gmail-switcher"
+        $rawBase = "https://raw.githubusercontent.com/joao-gaspar/antigravity-gmail-switcher/main"
+
         if ($path -eq "/" -or $path -eq "/index.html") {
-            if ($baseDir -and (Test-Path "$baseDir\index.html")) {
-                $buffer = [System.IO.File]::ReadAllBytes("$baseDir\index.html")
+            $f = if ($baseDir -and (Test-Path "$baseDir\index.html")) { "$baseDir\index.html" } else { "$defaultDir\index.html" }
+            if (-not (Test-Path $f)) {
+                try {
+                    $p = Split-Path $f; if (-not (Test-Path $p)) { New-Item -ItemType Directory -Force -Path $p | Out-Null }
+                    Invoke-WebRequest -Uri "$rawBase/index.html" -OutFile $f -UseBasicParsing
+                } catch {}
+            }
+            if (Test-Path $f) {
+                $buffer = [System.IO.File]::ReadAllBytes($f)
                 $response.ContentType = "text/html; charset=utf-8"
             }
         } elseif ($path -like "/app.js*") {
-            if ($baseDir -and (Test-Path "$baseDir\app.js")) {
-                $buffer = [System.IO.File]::ReadAllBytes("$baseDir\app.js")
+            $f = if ($baseDir -and (Test-Path "$baseDir\app.js")) { "$baseDir\app.js" } else { "$defaultDir\app.js" }
+            if (-not (Test-Path $f)) {
+                try {
+                    $p = Split-Path $f; if (-not (Test-Path $p)) { New-Item -ItemType Directory -Force -Path $p | Out-Null }
+                    Invoke-WebRequest -Uri "$rawBase/app.js" -OutFile $f -UseBasicParsing
+                } catch {}
+            }
+            if (Test-Path $f) {
+                $buffer = [System.IO.File]::ReadAllBytes($f)
                 $response.ContentType = "application/javascript; charset=utf-8"
             }
         } elseif ($path -like "/styles.css*") {
-            if ($baseDir -and (Test-Path "$baseDir\styles.css")) {
-                $buffer = [System.IO.File]::ReadAllBytes("$baseDir\styles.css")
+            $f = if ($baseDir -and (Test-Path "$baseDir\styles.css")) { "$baseDir\styles.css" } else { "$defaultDir\styles.css" }
+            if (-not (Test-Path $f)) {
+                try {
+                    $p = Split-Path $f; if (-not (Test-Path $p)) { New-Item -ItemType Directory -Force -Path $p | Out-Null }
+                    Invoke-WebRequest -Uri "$rawBase/styles.css" -OutFile $f -UseBasicParsing
+                } catch {}
+            }
+            if (Test-Path $f) {
+                $buffer = [System.IO.File]::ReadAllBytes($f)
                 $response.ContentType = "text/css; charset=utf-8"
             }
         } elseif ($path -eq "/accounts.json") {
-            if ($baseDir -and (Test-Path "$baseDir\accounts.json")) {
-                $buffer = [System.IO.File]::ReadAllBytes("$baseDir\accounts.json")
+            $f = if ($baseDir -and (Test-Path "$baseDir\accounts.json")) { "$baseDir\accounts.json" } else { "$defaultDir\accounts.json" }
+            if (-not (Test-Path $f)) {
+                try {
+                    $p = Split-Path $f; if (-not (Test-Path $p)) { New-Item -ItemType Directory -Force -Path $p | Out-Null }
+                    Invoke-WebRequest -Uri "$rawBase/accounts.json" -OutFile $f -UseBasicParsing
+                } catch {}
+            }
+            if (Test-Path $f) {
+                $buffer = [System.IO.File]::ReadAllBytes($f)
                 $response.ContentType = "application/json; charset=utf-8"
             }
         } elseif ($path -eq "/api/self-update" -or $path -eq "/api/update") {
