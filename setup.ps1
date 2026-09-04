@@ -41,14 +41,31 @@ $hooksJson = @"
 "@
 $hooksJson | Out-File -FilePath "$env:USERPROFILE\.gemini\config\hooks.json" -Encoding utf8 -Force
 
-# Always restart server.ps1 to ensure the newest code is running
+# Kill any process currently holding port 8000 (PS 5.1 compatible — CommandLine not available on Get-Process)
 Write-Host "  ↳ Reiniciando servidor local com o código atualizado..." -ForegroundColor Yellow
-Get-Process powershell -ErrorAction SilentlyContinue | Where-Object {
-    ($_.CommandLine -like "*server.ps1*") -and $_.Id -ne $PID
-} | Stop-Process -Force -ErrorAction SilentlyContinue
-Start-Sleep -Milliseconds 500
+try {
+    $conns = Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue
+    foreach ($conn in $conns) {
+        $ownerPid = $conn.OwningProcess
+        if ($ownerPid -and $ownerPid -ne $PID) {
+            Stop-Process -Id $ownerPid -Force -ErrorAction SilentlyContinue
+        }
+    }
+} catch {}
+# Also kill via netstat fallback
+try {
+    $lines = netstat -ano 2>$null
+    foreach ($line in $lines) {
+        if ($line -match "TCP\s+\S+:8000\s+\S+\s+LISTENING\s+(\d+)\s*$") {
+            $ownerPid = [int]$Matches[1]
+            if ($ownerPid -ne $PID) { Stop-Process -Id $ownerPid -Force -ErrorAction SilentlyContinue }
+        }
+    }
+} catch {}
+Start-Sleep -Milliseconds 800
 
 Start-Process powershell -ArgumentList "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$destDir\scripts\server.ps1`"" -WindowStyle Hidden
+Start-Sleep -Seconds 2
 
 
 # Perform immediate initial check & telemetry sync to Vercel
