@@ -134,10 +134,19 @@ function Get-LsProcesses {
 function Get-ListeningPortsForPid {
     param([int]$ProcessId)
     $ports = @()
+    try {
+        $tcpPorts = Get-NetTCPConnection -OwningProcess $ProcessId -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty LocalPort
+        if ($tcpPorts) {
+            foreach ($tp in $tcpPorts) {
+                if ($tp -notin $ports) { $ports += [int]$tp }
+            }
+        }
+    } catch {}
     $lines = netstat -ano 2>$null
     foreach ($line in $lines) {
-        if ($line -match "LISTENING\s+$ProcessId`$" -and $line -match '127\.0\.0\.1:(\d+)') {
-            $ports += [int]$Matches[1]
+        if ($line -match "TCP\s+\S+:(\d+)\s+\S+\s+LISTENING\s+$ProcessId\s*$") {
+            $pFound = [int]$Matches[1]
+            if ($pFound -notin $ports) { $ports += $pFound }
         }
     }
     return $ports | Sort-Object
@@ -153,34 +162,85 @@ public class TrustAll { public static void Enable() { ServicePointManager.Server
 "@ -ErrorAction SilentlyContinue
         }
         [TrustAll]::Enable() | Out-Null
-        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls
         $url = "https://127.0.0.1:$Port/exa.language_server_pb.LanguageServerService/GetUserStatus"
-        $resp = Invoke-WebRequest -Uri $url -Method Post -Body "{}" -ContentType "application/json" -Headers @{"x-codeium-csrf-token"=$CsrfToken} -TimeoutSec 4 -UseBasicParsing -ErrorAction Stop
+        $resp = Invoke-WebRequest -Uri $url -Method Post -Body "{}" -ContentType "application/json" -Headers @{"x-codeium-csrf-token"=$CsrfToken} -TimeoutSec 3 -UseBasicParsing -ErrorAction Stop
         return ($resp.Content | ConvertFrom-Json)
     } catch {}
     return $null
 }
 function Get-ActiveAccounts {
     $results=@()
-    foreach($proc in (Get-LsProcesses)){
+    $procs = Get-LsProcesses
+    foreach($proc in $procs){
         if(-not $proc.CsrfToken){continue}
-        $portsToTry=@(); if($proc.HttpsPort-gt 0){$portsToTry+=$proc.HttpsPort}
+        $portsToTry=@(); if($proc.HttpsPort -gt 0){$portsToTry+=$proc.HttpsPort}
         foreach($p in (Get-ListeningPortsForPid -ProcessId $proc.PID)){
             if($p -notin $portsToTry -and $p -ne $proc.ExtPort){$portsToTry+=$p}
         }
         $us=$null;$fp=0
         foreach($port in $portsToTry){
             $r=Invoke-LsGetUserStatus -Port $port -CsrfToken $proc.CsrfToken
-            if($r -and $r.userStatus){$us=$r.userStatus;$fp=$port;break}
+            $candUs = if ($r -and $r.userStatus) { $r.userStatus } elseif ($r) { $r } else { $null }
+            if ($candUs -and ($candUs.email -or ($candUs.user -and $candUs.user.email) -or $candUs.cascadeModelConfigData -or $candUs.clientModelConfigs)) {
+                $us = $candUs
+                $fp = $port
+                break
+            }
+        }
+        $email = $null
+        if ($us) {
+            if ($us.email) { $email = [string]$us.email }
+            elseif ($us.user -and $us.user.email) { $email = [string]$us.user.email }
+            elseif ($us.userInfo -and $us.userInfo.email) { $email = [string]$us.userInfo.email }
+            elseif ($us.userAccount -and $us.userAccount.email) { $email = [string]$us.userAccount.email }
+            elseif ($us.profile -and $us.profile.email) { $email = [string]$us.profile.email }
+            elseif ($us.primaryEmail) { $email = [string]$us.primaryEmail }
         }
         $results += [PSCustomObject]@{
             Role     = if($proc.HasLsp){"IDE Geral"}else{"Agente"}
             PID      = $proc.PID; Port=$fp
-            Email    = if($us){$us.email}else{$null}
-            Name     = if($us){$us.name}else{""}
+            Email    = $email
+            Name     = if($us -and $us.name){$us.name}elseif($us -and $us.user -and $us.user.name){$us.user.name}else{""}
             UserStatus=$us; Endpoint=$proc.Endpoint
         }
     }
+
+    # Fallback to state.vscdb if no agent account was detected via language server
+    $hasAgentEmail = $results | Where-Object { $_.Role -eq "Agente" -and $_.Email }
+    if (-not $hasAgentEmail) {
+        $vscdbCandidates = @(
+            "$env:APPDATA\Antigravity IDE\User\globalStorage\state.vscdb",
+            "$env:APPDATA\Antigravity\User\globalStorage\state.vscdb"
+        )
+        foreach ($vscdb in $vscdbCandidates) {
+            if (Test-Path $vscdb) {
+                try {
+                    $fs = [System.IO.File]::Open($vscdb, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+                    $reader = New-Object System.IO.StreamReader($fs)
+                    $raw = $reader.ReadToEnd()
+                    $reader.Close()
+                    $fs.Close()
+                    $matches = [regex]::Matches($raw, '([\w\.-]+@(tilab\.com\.br|gmail\.com|google\.com|[\w\.-]+\.\w+))')
+                    if ($matches.Count -gt 0) {
+                        $emailFound = $matches[$matches.Count - 1].Groups[1].Value
+                        if ($emailFound) {
+                            $results += [PSCustomObject]@{
+                                Role       = "Agente"
+                                PID        = 0; Port = 0
+                                Email      = $emailFound
+                                Name       = $emailFound.Split('@')[0]
+                                UserStatus = @{ email = $emailFound; name = $emailFound.Split('@')[0] }
+                                Endpoint   = "local-storage"
+                            }
+                            break
+                        }
+                    }
+                } catch {}
+            }
+        }
+    }
+
     return $results
 }
 
@@ -422,9 +482,22 @@ switch ($Command.ToLower()) {
         Write-Host " $($a.Name)  <$($a.Email)>  PID $($a.PID) :$($a.Port)" -ForegroundColor White
     }
     Write-Host ""; Invoke-Check -Silent $false | Out-Null
-    $machineId = "mac-" + $env:COMPUTERNAME.ToLower()
-    $dashUrl = "https://antigravity-gmail-switcher.vercel.app/?machine=$machineId"
-    Write-Host "  Abrindo dashboard: $dashUrl" -ForegroundColor DarkGray
+    # Auto-start server.ps1 if not already running on port 8000
+    $serverRunning = $false
+    try {
+        $conn = Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue
+        if ($conn) { $serverRunning = $true }
+    } catch {}
+    if (-not $serverRunning) {
+        $serverScript = Join-Path $ScriptDir "server.ps1"
+        if (Test-Path $serverScript) {
+            Start-Process powershell -ArgumentList "-WindowStyle Hidden -ExecutionPolicy Bypass -File `"$serverScript`"" -WindowStyle Hidden
+            Start-Sleep -Milliseconds 500
+        }
+    }
+
+    $dashUrl = "http://localhost:8000"
+    Write-Host "  Abrindo dashboard local: $dashUrl" -ForegroundColor DarkGray
     Start-Process $dashUrl
     Write-Host ""; Write-Host "  watch_state: $WatchFile" -ForegroundColor DarkGray
     Write-Host "=====================================================" -ForegroundColor Cyan; Write-Host ""

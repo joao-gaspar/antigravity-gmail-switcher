@@ -30,61 +30,135 @@ Write-Host "AGS Server running on http://127.0.0.1:$activePort/"
 function Get-LanguageServerStatus {
     try {
         $rawProcs = Get-CimInstance Win32_Process | Where-Object { $_.Name -like 'language_server*' }
-        if (-not $rawProcs) { return $null }
+        if (-not $rawProcs) {
+            $rawProcs = Get-Process -Name "*language_server*" -ErrorAction SilentlyContinue | ForEach-Object {
+                try {
+                    $wmi = Get-WmiObject Win32_Process -Filter "ProcessId = $($_.Id)" -ErrorAction SilentlyContinue
+                    if ($wmi) { $wmi } else { $_ }
+                } catch { $_ }
+            }
+        }
 
-        # Prioritize Agente process (WITHOUT --enable_lsp) over IDE Geral (with --enable_lsp), matching gmail-switcher.ps1
-        $procs = $rawProcs | Sort-Object @{Expression={
-            if ($_.CommandLine -and -not $_.CommandLine.Contains("--enable_lsp")) { 0 } else { 1 }
-        }}, @{Expression={[long]$_.ProcessId}; Descending=$true}
+        if ($rawProcs) {
+            # Prioritize Agente process (WITHOUT --enable_lsp) over IDE Geral (with --enable_lsp)
+            $procs = $rawProcs | Sort-Object @{Expression={
+                if ($_.CommandLine -and -not $_.CommandLine.Contains("--enable_lsp")) { 0 } else { 1 }
+            }}, @{Expression={[long]$_.ProcessId}; Descending=$true}
 
-        $netstat = netstat -ano 2>$null
+            $netstat = netstat -ano 2>$null
 
-        foreach ($p in $procs) {
-            $cl = $p.CommandLine
-            $pidVal = $p.ProcessId
-            if (-not $cl) { continue }
+            foreach ($p in $procs) {
+                $cl = $p.CommandLine
+                $pidVal = $p.ProcessId
+                if (-not $cl) { continue }
 
-            $m = [regex]::Match($cl, '--csrf_token[=\s]+([\w-]+)')
-            if (-not $m.Success) { continue }
-            $csrf = $m.Groups[1].Value
+                $csrfTokens = @()
+                if ($cl -match '--csrf_token[=\s"]+([^"\s]+)') { $csrfTokens += $Matches[1] }
+                if ($cl -match '--extension_server_csrf_token[=\s"]+([^"\s]+)') { $csrfTokens += $Matches[1] }
+                if ($csrfTokens.Count -eq 0) { continue }
 
-            $listeningPorts = @()
-            foreach ($line in ($netstat -split "\r?\n")) {
-                if ($line -like "*LISTENING*" -and $line.Trim().EndsWith($pidVal.ToString())) {
-                    $pm = [regex]::Match($line, '127\.0\.0\.1:(\d+)')
-                    if ($pm.Success) {
-                        $listeningPorts += [int]$pm.Groups[1].Value
+                $listeningPorts = @()
+
+                # 1. Native Get-NetTCPConnection
+                try {
+                    $tcpPorts = Get-NetTCPConnection -OwningProcess $pidVal -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty LocalPort
+                    if ($tcpPorts) {
+                        foreach ($tp in $tcpPorts) {
+                            if ($tp -notin $listeningPorts) { $listeningPorts += [int]$tp }
+                        }
+                    }
+                } catch {}
+
+                # 2. Command-line argument ports
+                if ($cl -match '--https_server_port\s+(\d+)') {
+                    $p1 = [int]$Matches[1]
+                    if ($p1 -notin $listeningPorts) { $listeningPorts += $p1 }
+                }
+                if ($cl -match '--extension_server_port\s+(\d+)') {
+                    $p2 = [int]$Matches[1]
+                    if ($p2 -notin $listeningPorts) { $listeningPorts += $p2 }
+                }
+
+                # 3. netstat -ano fallback matching any binding IP format
+                if ($netstat) {
+                    foreach ($line in ($netstat -split "\r?\n")) {
+                        if ($line -match "TCP\s+\S+:(\d+)\s+\S+\s+LISTENING\s+$pidVal\s*$") {
+                            $portFound = [int]$Matches[1]
+                            if ($portFound -notin $listeningPorts) {
+                                $listeningPorts += $portFound
+                            }
+                        }
+                    }
+                }
+
+                if (-not ([System.Management.Automation.PSTypeName]"TrustAll").Type) {
+                    Add-Type -TypeDefinition @"
+using System.Net; using System.Net.Security; using System.Security.Cryptography.X509Certificates;
+public class TrustAll { public static void Enable() { ServicePointManager.ServerCertificateValidationCallback = (s,c,ch,e) => true; } }
+"@ -ErrorAction SilentlyContinue
+                }
+                [TrustAll]::Enable() | Out-Null
+                [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls
+
+                foreach ($port in $listeningPorts) {
+                    foreach ($proto in @("https", "http")) {
+                        foreach ($csrf in $csrfTokens) {
+                            foreach ($hdr in @("x-codeium-csrf-token", "x-csrf-token")) {
+                                try {
+                                    $url = "$($proto)://127.0.0.1:$port/exa.language_server_pb.LanguageServerService/GetUserStatus"
+                                    $resp = Invoke-WebRequest -Uri $url -Method Post -Body "{}" -ContentType "application/json" -Headers @{$hdr=$csrf} -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop
+                                    $parsed = $resp.Content | ConvertFrom-Json
+                                    $us = if ($parsed.userStatus) { $parsed.userStatus } else { $parsed }
+                                    $email = $null
+                                    if ($us.email) { $email = [string]$us.email }
+                                    elseif ($us.user -and $us.user.email) { $email = [string]$us.user.email }
+                                    elseif ($us.userInfo -and $us.userInfo.email) { $email = [string]$us.userInfo.email }
+                                    elseif ($us.userAccount -and $us.userAccount.email) { $email = [string]$us.userAccount.email }
+                                    elseif ($us.profile -and $us.profile.email) { $email = [string]$us.profile.email }
+                                    elseif ($us.primaryEmail) { $email = [string]$us.primaryEmail }
+
+                                    if ($email -or ($us -and ($us.cascadeModelConfigData -or $us.clientModelConfigs -or $us.availableModels))) {
+                                        return @{
+                                            userStatus = $us
+                                            port = $port
+                                            pid = $pidVal
+                                            email = $email
+                                            name = if ($us.name) { [string]$us.name } elseif ($us.user -and $us.user.name) { [string]$us.user.name } else { "" }
+                                        }
+                                    }
+                                } catch {}
+                            }
+                        }
                     }
                 }
             }
+        }
 
-            foreach ($port in $listeningPorts) {
+        # 4. Storage Fallback: state.vscdb
+        $vscdbCandidates = @(
+            "$env:APPDATA\Antigravity IDE\User\globalStorage\state.vscdb",
+            "$env:APPDATA\Antigravity\User\globalStorage\state.vscdb"
+        )
+        foreach ($vscdb in $vscdbCandidates) {
+            if (Test-Path $vscdb) {
                 try {
-                    $url = "https://127.0.0.1:$port/exa.language_server_pb.LanguageServerService/GetUserStatus"
-                    [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
-                    $req = [System.Net.HttpWebRequest]::Create($url)
-                    $req.Method = "POST"
-                    $req.Headers.Add("x-codeium-csrf-token", $csrf)
-                    $req.ContentType = "application/json"
-                    $req.Timeout = 2000
-                    $bodyBytes = [System.Text.Encoding]::UTF8.GetBytes("{}")
-                    $req.ContentLength = $bodyBytes.Length
-                    $st = $req.GetRequestStream()
-                    $st.Write($bodyBytes, 0, $bodyBytes.Length)
-                    $st.Close()
-
-                    $resp = $req.GetResponse()
-                    $reader = New-Object System.IO.StreamReader($resp.GetResponseStream())
-                    $jsonStr = $reader.ReadToEnd()
+                    $fs = [System.IO.File]::Open($vscdb, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+                    $reader = New-Object System.IO.StreamReader($fs)
+                    $raw = $reader.ReadToEnd()
                     $reader.Close()
-                    $resp.Close()
+                    $fs.Close()
 
-                    $parsed = $jsonStr | ConvertFrom-Json
-                    if ($parsed.userStatus -and ($parsed.userStatus.email -or ($parsed.userStatus.user -and $parsed.userStatus.user.email))) {
-                        return @{
-                            userStatus = $parsed.userStatus
-                            port = $port
-                            pid = $pidVal
+                    $matches = [regex]::Matches($raw, '([\w\.-]+@(tilab\.com\.br|gmail\.com|google\.com|[\w\.-]+\.\w+))')
+                    if ($matches.Count -gt 0) {
+                        $emailFound = $matches[$matches.Count - 1].Groups[1].Value
+                        if ($emailFound) {
+                            return @{
+                                userStatus = @{ email = $emailFound; name = $emailFound.Split('@')[0] }
+                                port = 0
+                                pid = 0
+                                email = $emailFound
+                                name = $emailFound.Split('@')[0]
+                            }
                         }
                     }
                 } catch {}
@@ -98,6 +172,7 @@ function Get-LanguageServerStatus {
 while ($listener.IsListening) {
     try {
         $context = $listener.GetContext()
+        
         $request = $context.Request
         $response = $context.Response
 
@@ -114,25 +189,83 @@ while ($listener.IsListening) {
         $path = $request.Url.AbsolutePath
         $buffer = [byte[]]@()
 
-        if ($path -eq "/api/status" -or $path -eq "/api/live") {
+        $staticCandidates = @(
+            "$env:USERPROFILE\.gemini\config\skills\gmail-switcher",
+            "C:\Users\JoaoGaspar\.gemini\antigravity-ide\scratch\gmail-switcher",
+            (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)),
+            (Split-Path -Parent $MyInvocation.MyCommand.Path)
+        )
+        $baseDir = $null
+        foreach ($cand in $staticCandidates) {
+            if ($cand -and (Test-Path "$cand\index.html")) {
+                $baseDir = $cand
+                break
+            }
+        }
+
+        if ($path -eq "/" -or $path -eq "/index.html") {
+            if ($baseDir -and (Test-Path "$baseDir\index.html")) {
+                $buffer = [System.IO.File]::ReadAllBytes("$baseDir\index.html")
+                $response.ContentType = "text/html; charset=utf-8"
+            }
+        } elseif ($path -like "/app.js*") {
+            if ($baseDir -and (Test-Path "$baseDir\app.js")) {
+                $buffer = [System.IO.File]::ReadAllBytes("$baseDir\app.js")
+                $response.ContentType = "application/javascript; charset=utf-8"
+            }
+        } elseif ($path -like "/styles.css*") {
+            if ($baseDir -and (Test-Path "$baseDir\styles.css")) {
+                $buffer = [System.IO.File]::ReadAllBytes("$baseDir\styles.css")
+                $response.ContentType = "text/css; charset=utf-8"
+            }
+        } elseif ($path -eq "/accounts.json") {
+            if ($baseDir -and (Test-Path "$baseDir\accounts.json")) {
+                $buffer = [System.IO.File]::ReadAllBytes("$baseDir\accounts.json")
+                $response.ContentType = "application/json; charset=utf-8"
+            }
+        } elseif ($path -eq "/api/self-update" -or $path -eq "/api/update") {
+            $destDir = if ($baseDir) { $baseDir } else { "$env:USERPROFILE\.gemini\config\skills\gmail-switcher" }
+            $baseUrl = "https://raw.githubusercontent.com/joao-gaspar/antigravity-gmail-switcher/main"
+            try {
+                if (-not (Test-Path "$destDir\scripts")) { New-Item -ItemType Directory -Force -Path "$destDir\scripts" | Out-Null }
+                Invoke-WebRequest -Uri "$baseUrl/server.ps1" -OutFile "$destDir\scripts\server.ps1" -UseBasicParsing
+                Invoke-WebRequest -Uri "$baseUrl/gmail-switcher.ps1" -OutFile "$destDir\scripts\gmail-switcher.ps1" -UseBasicParsing
+                Invoke-WebRequest -Uri "$baseUrl/index.html" -OutFile "$destDir\index.html" -UseBasicParsing
+                Invoke-WebRequest -Uri "$baseUrl/app.js" -OutFile "$destDir\app.js" -UseBasicParsing
+                Invoke-WebRequest -Uri "$baseUrl/styles.css" -OutFile "$destDir\styles.css" -UseBasicParsing
+                $resMap = @{ status = "ok"; message = "Arquivos atualizados com sucesso do GitHub!"; updated = $true }
+            } catch {
+                $resMap = @{ status = "error"; message = $_.Exception.Message; updated = $false }
+            }
+            $json = $resMap | ConvertTo-Json
+            $buffer = [System.Text.Encoding]::UTF8.GetBytes($json)
+            $response.ContentType = "application/json; charset=utf-8"
+        } elseif ($path -eq "/api/status" -or $path -eq "/api/live") {
             $statusObj = Get-LanguageServerStatus
 
             $agentEmail = $null
             $agentName = $null
             $modelQuotas = @{}
 
+            if ($statusObj -and $statusObj.email) { $agentEmail = [string]$statusObj.email }
+            if ($statusObj -and $statusObj.name)  { $agentName  = [string]$statusObj.name }
+
             if ($statusObj -and $statusObj.userStatus) {
                 $us = $statusObj.userStatus
-                if ($us.email) { $agentEmail = [string]$us.email }
-                elseif ($us.user -and $us.user.email) { $agentEmail = [string]$us.user.email }
-                elseif ($us.userInfo -and $us.userInfo.email) { $agentEmail = [string]$us.userInfo.email }
-                elseif ($us.userAccount -and $us.userAccount.email) { $agentEmail = [string]$us.userAccount.email }
-                elseif ($us.profile -and $us.profile.email) { $agentEmail = [string]$us.profile.email }
-                elseif ($us.primaryEmail) { $agentEmail = [string]$us.primaryEmail }
+                if (-not $agentEmail) {
+                    if ($us.email) { $agentEmail = [string]$us.email }
+                    elseif ($us.user -and $us.user.email) { $agentEmail = [string]$us.user.email }
+                    elseif ($us.userInfo -and $us.userInfo.email) { $agentEmail = [string]$us.userInfo.email }
+                    elseif ($us.userAccount -and $us.userAccount.email) { $agentEmail = [string]$us.userAccount.email }
+                    elseif ($us.profile -and $us.profile.email) { $agentEmail = [string]$us.profile.email }
+                    elseif ($us.primaryEmail) { $agentEmail = [string]$us.primaryEmail }
+                }
 
-                if ($us.name) { $agentName = [string]$us.name }
-                elseif ($us.user -and $us.user.name) { $agentName = [string]$us.user.name }
-                elseif ($us.userInfo -and $us.userInfo.name) { $agentName = [string]$us.userInfo.name }
+                if (-not $agentName) {
+                    if ($us.name) { $agentName = [string]$us.name }
+                    elseif ($us.user -and $us.user.name) { $agentName = [string]$us.user.name }
+                    elseif ($us.userInfo -and $us.userInfo.name) { $agentName = [string]$us.userInfo.name }
+                }
 
                 $configs = @()
                 if ($us.cascadeModelConfigData -and $us.cascadeModelConfigData.clientModelConfigs) {
@@ -172,6 +305,9 @@ while ($listener.IsListening) {
             $resMap = @{
                 status = "ok"
                 port = $activePort
+                activeEmail = $agentEmail
+                activeName = $agentName
+                activePID = if ($statusObj) { $statusObj.pid } else { $null }
                 agent = if ($agentEmail) { @{ email = $agentEmail; name = $agentName } } else { $null }
                 modelQuotas = $modelQuotas
                 live = if ($statusObj) { $statusObj.userStatus } else { $null }
@@ -209,10 +345,12 @@ while ($listener.IsListening) {
             $response.ContentType = "application/json; charset=utf-8"
         }
 
-        $response.ContentLength64 = $buffer.Length
-        $output = $response.OutputStream
-        $output.Write($buffer, 0, $buffer.Length)
-        $output.Close()
+        if ($buffer.Length -gt 0) {
+            $response.ContentLength64 = $buffer.Length
+            $output = $response.OutputStream
+            $output.Write($buffer, 0, $buffer.Length)
+            $output.Close()
+        }
         $response.Close()
     } catch {}
 }
