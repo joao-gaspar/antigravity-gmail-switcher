@@ -91,32 +91,23 @@ function Get-LanguageServerStatus {
                     }
                 }
 
+                if (-not ([System.Management.Automation.PSTypeName]"TrustAll").Type) {
+                    Add-Type -TypeDefinition @"
+using System.Net; using System.Net.Security; using System.Security.Cryptography.X509Certificates;
+public class TrustAll { public static void Enable() { ServicePointManager.ServerCertificateValidationCallback = (s,c,ch,e) => true; } }
+"@ -ErrorAction SilentlyContinue
+                }
+                [TrustAll]::Enable() | Out-Null
+                [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls
+
                 foreach ($port in $listeningPorts) {
                     foreach ($proto in @("https", "http")) {
                         foreach ($csrf in $csrfTokens) {
                             foreach ($hdr in @("x-codeium-csrf-token", "x-csrf-token")) {
                                 try {
                                     $url = "$($proto)://127.0.0.1:$port/exa.language_server_pb.LanguageServerService/GetUserStatus"
-                                    [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
-                                    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12 -bor [System.Net.SecurityProtocolType]::Tls11 -bor [System.Net.SecurityProtocolType]::Tls
-                                    $req = [System.Net.HttpWebRequest]::Create($url)
-                                    $req.Method = "POST"
-                                    $req.Headers.Add($hdr, $csrf)
-                                    $req.ContentType = "application/json"
-                                    $req.Timeout = 1500
-                                    $bodyBytes = [System.Text.Encoding]::UTF8.GetBytes("{}")
-                                    $req.ContentLength = $bodyBytes.Length
-                                    $st = $req.GetRequestStream()
-                                    $st.Write($bodyBytes, 0, $bodyBytes.Length)
-                                    $st.Close()
-
-                                    $resp = $req.GetResponse()
-                                    $reader = New-Object System.IO.StreamReader($resp.GetResponseStream())
-                                    $jsonStr = $reader.ReadToEnd()
-                                    $reader.Close()
-                                    $resp.Close()
-
-                                    $parsed = $jsonStr | ConvertFrom-Json
+                                    $resp = Invoke-WebRequest -Uri $url -Method Post -Body "{}" -ContentType "application/json" -Headers @{$hdr=$csrf} -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop
+                                    $parsed = $resp.Content | ConvertFrom-Json
                                     $us = if ($parsed.userStatus) { $parsed.userStatus } else { $parsed }
                                     $email = $null
                                     if ($us.email) { $email = [string]$us.email }
@@ -297,6 +288,9 @@ while ($listener.IsListening) {
             $resMap = @{
                 status = "ok"
                 port = $activePort
+                activeEmail = $agentEmail
+                activeName = $agentName
+                activePID = if ($statusObj) { $statusObj.pid } else { $null }
                 agent = if ($agentEmail) { @{ email = $agentEmail; name = $agentName } } else { $null }
                 modelQuotas = $modelQuotas
                 live = if ($statusObj) { $statusObj.userStatus } else { $null }
