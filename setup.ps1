@@ -14,9 +14,12 @@ if (-not (Test-Path "$destDir\scripts")) {
 
 $baseUrl = "https://raw.githubusercontent.com/joao-gaspar/antigravity-gmail-switcher/main"
 
-Write-Host "  ↳ Sincronizando scripts..." -ForegroundColor Yellow
+Write-Host "  ↳ Sincronizando scripts e interface nativa..." -ForegroundColor Yellow
 Invoke-WebRequest -Uri "$baseUrl/server.ps1" -OutFile "$destDir\scripts\server.ps1" -UseBasicParsing
 Invoke-WebRequest -Uri "$baseUrl/gmail-switcher.ps1" -OutFile "$destDir\scripts\gmail-switcher.ps1" -UseBasicParsing
+Invoke-WebRequest -Uri "$baseUrl/index.html" -OutFile "$destDir\index.html" -UseBasicParsing
+Invoke-WebRequest -Uri "$baseUrl/app.js" -OutFile "$destDir\app.js" -UseBasicParsing
+Invoke-WebRequest -Uri "$baseUrl/styles.css" -OutFile "$destDir\styles.css" -UseBasicParsing
 if (-not (Test-Path "$destDir\accounts.json")) {
     Invoke-WebRequest -Uri "$baseUrl/accounts.json" -OutFile "$destDir\accounts.json" -UseBasicParsing
 }
@@ -52,6 +55,6 @@ Start-Process powershell -ArgumentList "-WindowStyle Hidden -ExecutionPolicy Byp
 Write-Host "  ↳ Transmitindo conta ativa e cotas do $env:COMPUTERNAME..." -ForegroundColor Green
 powershell -ExecutionPolicy Bypass -File "$destDir\scripts\gmail-switcher.ps1" check
 
-Write-Host "`n[SUCESSO] Computador $env:COMPUTERNAME conectado ao painel web!" -ForegroundColor Green
-Write-Host "Abrindo switcher..." -ForegroundColor Cyan
-Start-Process "https://antigravity-gmail-switcher.vercel.app/?machine=mac-$($env:COMPUTERNAME.ToLower())"
+Write-Host "`n[SUCESSO] Computador $env:COMPUTERNAME conectado ao painel local!" -ForegroundColor Green
+Write-Host "Abrindo switcher local em http://localhost:8000..." -ForegroundColor Cyan
+Start-Process "http://localhost:8000"

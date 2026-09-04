@@ -181,6 +181,7 @@ function Get-LanguageServerStatus {
 while ($listener.IsListening) {
     try {
         $context = $listener.GetContext()
+        
         $request = $context.Request
         $response = $context.Response
 
@@ -197,7 +198,41 @@ while ($listener.IsListening) {
         $path = $request.Url.AbsolutePath
         $buffer = [byte[]]@()
 
-        if ($path -eq "/api/status" -or $path -eq "/api/live") {
+        $staticCandidates = @(
+            "$env:USERPROFILE\.gemini\config\skills\gmail-switcher",
+            "C:\Users\JoaoGaspar\.gemini\antigravity-ide\scratch\gmail-switcher",
+            (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)),
+            (Split-Path -Parent $MyInvocation.MyCommand.Path)
+        )
+        $baseDir = $null
+        foreach ($cand in $staticCandidates) {
+            if ($cand -and (Test-Path "$cand\index.html")) {
+                $baseDir = $cand
+                break
+            }
+        }
+
+        if ($path -eq "/" -or $path -eq "/index.html") {
+            if ($baseDir -and (Test-Path "$baseDir\index.html")) {
+                $buffer = [System.IO.File]::ReadAllBytes("$baseDir\index.html")
+                $response.ContentType = "text/html; charset=utf-8"
+            }
+        } elseif ($path -like "/app.js*") {
+            if ($baseDir -and (Test-Path "$baseDir\app.js")) {
+                $buffer = [System.IO.File]::ReadAllBytes("$baseDir\app.js")
+                $response.ContentType = "application/javascript; charset=utf-8"
+            }
+        } elseif ($path -like "/styles.css*") {
+            if ($baseDir -and (Test-Path "$baseDir\styles.css")) {
+                $buffer = [System.IO.File]::ReadAllBytes("$baseDir\styles.css")
+                $response.ContentType = "text/css; charset=utf-8"
+            }
+        } elseif ($path -eq "/accounts.json") {
+            if ($baseDir -and (Test-Path "$baseDir\accounts.json")) {
+                $buffer = [System.IO.File]::ReadAllBytes("$baseDir\accounts.json")
+                $response.ContentType = "application/json; charset=utf-8"
+            }
+        } elseif ($path -eq "/api/status" -or $path -eq "/api/live") {
             $statusObj = Get-LanguageServerStatus
 
             $agentEmail = $null
@@ -299,10 +334,12 @@ while ($listener.IsListening) {
             $response.ContentType = "application/json; charset=utf-8"
         }
 
-        $response.ContentLength64 = $buffer.Length
-        $output = $response.OutputStream
-        $output.Write($buffer, 0, $buffer.Length)
-        $output.Close()
+        if ($buffer.Length -gt 0) {
+            $response.ContentLength64 = $buffer.Length
+            $output = $response.OutputStream
+            $output.Write($buffer, 0, $buffer.Length)
+            $output.Close()
+        }
         $response.Close()
     } catch {}
 }

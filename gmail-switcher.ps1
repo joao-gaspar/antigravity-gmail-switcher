@@ -482,9 +482,8 @@ switch ($Command.ToLower()) {
         Write-Host " $($a.Name)  <$($a.Email)>  PID $($a.PID) :$($a.Port)" -ForegroundColor White
     }
     Write-Host ""; Invoke-Check -Silent $false | Out-Null
-    $machineId = "mac-" + $env:COMPUTERNAME.ToLower()
-    $dashUrl = "https://antigravity-gmail-switcher.vercel.app/?machine=$machineId"
-    Write-Host "  Abrindo dashboard: $dashUrl" -ForegroundColor DarkGray
+    $dashUrl = "http://localhost:8000"
+    Write-Host "  Abrindo dashboard local: $dashUrl" -ForegroundColor DarkGray
     Start-Process $dashUrl
     Write-Host ""; Write-Host "  watch_state: $WatchFile" -ForegroundColor DarkGray
     Write-Host "=====================================================" -ForegroundColor Cyan; Write-Host ""
